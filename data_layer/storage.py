@@ -1,0 +1,194 @@
+"""
+Storage Manager — SQLite3 sebagai satu sumber kebenaran data.
+Schema: date TEXT | ticker TEXT | open REAL | high REAL | low REAL |
+        close REAL | volume INTEGER | log_return REAL
+PRIMARY KEY (date, ticker)
+"""
+import sqlite3
+import numpy as np
+import pandas as pd
+from pathlib import Path
+from typing import List, Optional, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Default DB path (relative to project root)
+_DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "ihsg_trading.db"
+
+
+class StorageManager:
+    """
+    Engine SQLite3 untuk menyimpan dan memuat data OHLCV + log return.
+
+    Args:
+        db_path: Path ke file SQLite3 database.
+    """
+
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = str(db_path) if db_path else str(_DEFAULT_DB_PATH)
+        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _init_db(self) -> None:
+        """Buat tabel prices jika belum ada."""
+        with self._connect() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS prices (
+                    date       TEXT    NOT NULL,
+                    ticker     TEXT    NOT NULL,
+                    open       REAL,
+                    high       REAL,
+                    low        REAL,
+                    close      REAL,
+                    volume     INTEGER,
+                    log_return REAL,
+                    PRIMARY KEY (date, ticker)
+                )
+            """)
+            conn.commit()
+
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(self.db_path)
+
+    @staticmethod
+    def _compute_log_returns(close_values: np.ndarray) -> np.ndarray:
+        """Hitung log return: ln(close_t / close_{t-1})."""
+        log_returns = np.full(len(close_values), np.nan)
+        for i in range(1, len(close_values)):
+            prev = close_values[i - 1]
+            curr = close_values[i]
+            if prev > 0 and curr > 0:
+                log_returns[i] = np.log(curr / prev)
+        return log_returns
+
+    # ------------------------------------------------------------------
+    # Write operations
+    # ------------------------------------------------------------------
+
+    def save_prices(self, ticker: str, df: pd.DataFrame) -> None:
+        """
+        Simpan DataFrame OHLCV ke database (upsert).
+
+        Args:
+            ticker: Ticker saham (e.g. 'BBCA.JK')
+            df: DataFrame dengan kolom date, open, high, low, close, volume
+        """
+        data = df.copy()
+
+        # Pastikan kolom date ada dan string
+        if "date" not in data.columns:
+            if data.index.name == "date" or hasattr(data.index, "date"):
+                data = data.reset_index()
+            else:
+                raise ValueError("DataFrame harus memiliki kolom 'date'")
+
+        data["date"] = pd.to_datetime(data["date"]).dt.strftime("%Y-%m-%d")
+        data["ticker"] = ticker
+
+        # Hitung log return
+        data = data.sort_values("date")
+        close_values = data["close"].values.astype(float)
+        data["log_return"] = self._compute_log_returns(close_values)
+
+        # Upsert ke database
+        with self._connect() as conn:
+            for _, row in data.iterrows():
+                conn.execute("""
+                    INSERT OR REPLACE INTO prices
+                    (date, ticker, open, high, low, close, volume, log_return)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    row["date"], row["ticker"],
+                    float(row["open"]), float(row["high"]),
+                    float(row["low"]), float(row["close"]),
+                    int(row["volume"]), 
+                    float(row["log_return"]) if pd.notna(row["log_return"]) else None,
+                ))
+            conn.commit()
+
+        logger.info("Saved %d rows for %s", len(data), ticker)
+
+    # ------------------------------------------------------------------
+    # Read operations
+    # ------------------------------------------------------------------
+
+    def load_prices(
+        self, tickers: Optional[List[str]] = None
+    ) -> pd.DataFrame:
+        """
+        Load semua data harga (long format).
+
+        Args:
+            tickers: Filter ticker tertentu. None = semua.
+
+        Returns:
+            DataFrame long format: date, ticker, open, high, low, close, volume, log_return
+        """
+        with self._connect() as conn:
+            if tickers:
+                placeholders = ",".join("?" * len(tickers))
+                query = f"SELECT * FROM prices WHERE ticker IN ({placeholders}) ORDER BY date"
+                df = pd.read_sql_query(query, conn, params=tickers)
+            else:
+                df = pd.read_sql_query("SELECT * FROM prices ORDER BY date", conn)
+
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+        return df
+
+    def load_close_prices(
+        self, tickers: Optional[List[str]] = None
+    ) -> pd.DataFrame:
+        """
+        Load close prices dalam format wide (index=date, columns=ticker).
+
+        Returns:
+            DataFrame wide format
+        """
+        df = self.load_prices(tickers)
+        if df.empty:
+            return pd.DataFrame()
+        return df.pivot_table(index="date", columns="ticker", values="close")
+
+    def load_volume(
+        self, tickers: Optional[List[str]] = None
+    ) -> pd.DataFrame:
+        """
+        Load volume dalam format wide (index=date, columns=ticker).
+
+        Returns:
+            DataFrame wide format
+        """
+        df = self.load_prices(tickers)
+        if df.empty:
+            return pd.DataFrame()
+        return df.pivot_table(index="date", columns="ticker", values="volume")
+
+    def get_available_tickers(self) -> List[str]:
+        """Return list ticker yang tersedia di database."""
+        with self._connect() as conn:
+            result = conn.execute(
+                "SELECT DISTINCT ticker FROM prices ORDER BY ticker"
+            ).fetchall()
+        return [row[0] for row in result]
+
+    def get_date_range(self) -> Tuple[Optional[str], Optional[str]]:
+        """Return (min_date, max_date) dari database."""
+        with self._connect() as conn:
+            result = conn.execute(
+                "SELECT MIN(date), MAX(date) FROM prices"
+            ).fetchone()
+        return result if result else (None, None)
+
+    def __repr__(self) -> str:
+        tickers = self.get_available_tickers()
+        date_range = self.get_date_range()
+        return (
+            f"StorageManager(db='{self.db_path}', "
+            f"tickers={len(tickers)}, range={date_range})"
+        )

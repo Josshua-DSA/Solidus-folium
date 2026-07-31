@@ -4,3 +4,16 @@ REGISTA.md
 STRATEGY.md
 checkpoint.md
 context/
+
+# Outputs & Temporary runs
+outputs/
+*.whl
+*.json
+install_uv.sh
+scipy_pypi.json
+
+# Cache & Local Files
+**/__pycache__/
+.pytest_cache/
+venv/
+data/ihsg_trading.db

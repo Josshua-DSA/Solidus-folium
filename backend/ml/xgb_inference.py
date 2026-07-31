@@ -21,7 +21,7 @@ class XGBoostInference:
         self.feature_names: List[str] = []
         self.is_loaded: bool = False
 
-    def load_model(self, model_path="models/global_xgb_champion.pkl"):
+    def load_model(self, model_path="outputs/models/global_xgb_champion.pkl"):
         """Load V1 XGBoost model and metadata."""
         try:
             # V1 saves model in two parts:
@@ -55,7 +55,7 @@ class XGBoostInference:
             self.feature_names = model_metadata.get('feature_names', []) if model_metadata else []
 
             # Load champion metadata (performance metrics)
-            metadata_path = "models/champion_metadata.json"
+            metadata_path = "outputs/models/champion_metadata.json"
             if os.path.exists(metadata_path):
                 with open(metadata_path, 'r') as f:
                     data = json.load(f)

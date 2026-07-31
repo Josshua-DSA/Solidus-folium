@@ -125,10 +125,10 @@ def train_menu():
     console.print("\n[dim]Configure training parameters:[/dim]\n")
 
     # Check if existing model exists
-    model_exists = os.path.exists("models/best_lstm.pt")
+    model_exists = os.path.exists("outputs/models/best_lstm.pt")
 
     if model_exists:
-        console.print("[yellow]⚠ Existing model detected:[/yellow] models/best_lstm.pt\n")
+        console.print("[yellow]⚠ Existing model detected:[/yellow] outputs/models/best_lstm.pt\n")
         training_mode = Prompt.ask(
             "Training mode",
             choices=["fresh", "retrain"],
@@ -178,7 +178,7 @@ def ensemble_eval_menu():
     console.print("\n[dim]Test combined LSTM + XGBoost predictions with dynamic SL/TP[/dim]\n")
 
     # Check if XGBoost model exists
-    if not os.path.exists("models/global_xgb_champion.pkl") and not os.path.exists("models/global_xgb_champion.json"):
+    if not os.path.exists("outputs/models/global_xgb_champion.pkl") and not os.path.exists("outputs/models/global_xgb_champion.json"):
         console.print("[yellow]Warning: XGBoost model not found[/yellow]")
         console.print("[dim]To train XGBoost model:[/dim]")
         console.print("  1. git checkout paperium-v1")

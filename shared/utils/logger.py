@@ -45,7 +45,7 @@ def setup_logger(
 
     # File handler
     if log_file is None:
-        log_dir = Path(__file__).resolve().parent.parent.parent / "logs"
+        log_dir = Path(__file__).resolve().parent.parent.parent / "outputs" / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_file = str(log_dir / "quant.log")
 

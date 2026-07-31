@@ -76,7 +76,7 @@ class Config:
     
     # Paths
     reports_dir: str = "reports"
-    models_dir: str = "models"
+    models_dir: str = "outputs/models"
     
     def __post_init__(self):
         """Create necessary directories"""

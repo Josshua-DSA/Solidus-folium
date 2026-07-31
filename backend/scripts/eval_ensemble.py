@@ -53,7 +53,7 @@ class EnsembleBacktest:
         # Load LSTM
         self.logger.log("[cyan]Loading LSTM model...[/cyan]")
         self.lstm_model = ModelWrapper(config)
-        epoch, metrics = self.lstm_model.load_checkpoint("models/best_lstm.pt")
+        epoch, metrics = self.lstm_model.load_checkpoint("outputs/models/best_lstm.pt")
         if epoch is None:
             console.print("[red]Failed to load LSTM model[/red]")
             return False

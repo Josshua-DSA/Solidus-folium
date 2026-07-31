@@ -112,10 +112,10 @@ def main():
     logger.log("[cyan]Loading LSTM model...[/cyan]")
     try:
         model = ModelWrapper(config)
-        epoch, metrics = model.load_checkpoint("models/best_lstm.pt")
+        epoch, metrics = model.load_checkpoint("outputs/models/best_lstm.pt")
         if epoch is None:
              logger.log("[yellow]Warning: Could not load model checkpoint[/yellow]")
-             console.print("[yellow]Warning: Could not load model checkpoint. Ensure 'models/best_lstm.pt' exists.[/yellow]")
+             console.print("[yellow]Warning: Could not load model checkpoint. Ensure 'outputs/models/best_lstm.pt' exists.[/yellow]")
              return
         logger.log(f"[green]✓ Model loaded:[/green] Epoch {epoch}, Val Acc: {metrics.get('val_acc', 0):.1%}")
         console.print(f"\n[dim]Loaded LSTM Model (Epoch {epoch}, Acc: {metrics.get('val_acc', 0):.1%})[/dim]")

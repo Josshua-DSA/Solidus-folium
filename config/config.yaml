@@ -93,4 +93,4 @@ execution:
 # ---------------------------------------------------------------------------
 logging:
   level: "INFO"
-  file: "logs/quant.log"
+  file: "outputs/logs/quant.log"

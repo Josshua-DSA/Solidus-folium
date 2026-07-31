@@ -193,8 +193,8 @@ def main():
     # Determine checkpoint path
     checkpoint_path = None
     if args.retrain:
-        if os.path.exists("models/best_lstm.pt"):
-            checkpoint_path = "models/best_lstm.pt"
+        if os.path.exists("outputs/models/best_lstm.pt"):
+            checkpoint_path = "outputs/models/best_lstm.pt"
             logger.log(f"[yellow]Retrain mode: Using existing model at {checkpoint_path}[/yellow]")
         else:
             logger.log(f"[yellow]Retrain mode: No existing model found, starting fresh[/yellow]")
@@ -203,7 +203,7 @@ def main():
 
     # 0. Setup Session
     session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    session_dir = os.path.join("models", f"training_session_{session_id}")
+    session_dir = os.path.join("outputs/models", f"training_session_{session_id}")
     os.makedirs(session_dir, exist_ok=True)
 
     logger.log(f"[bold cyan]Initializing Session: {session_id}[/bold cyan]")
@@ -331,7 +331,7 @@ def main():
                 patience_counter = 0
                 model_wrapper.save_checkpoint(f"{session_dir}/best.pt", epoch, {"val_loss": val_loss, "val_acc": val_acc})
                 # Also verify/copy to global best for inference
-                model_wrapper.save_checkpoint("models/best_lstm.pt", epoch, {"val_loss": val_loss, "val_acc": val_acc})
+                model_wrapper.save_checkpoint("outputs/models/best_lstm.pt", epoch, {"val_loss": val_loss, "val_acc": val_acc})
             else:
                 patience_counter += 1
 

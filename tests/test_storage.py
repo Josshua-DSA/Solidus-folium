@@ -62,3 +62,31 @@ def test_log_return_computation(temp_db):
     # Log return baris kedua: ln(110/100) ≈ 0.0953
     expected_lr = np.log(110 / 100)
     assert abs(loaded.iloc[1]["log_return"] - expected_lr) < 0.001
+
+
+def test_fundamentals(temp_db):
+    """Data fundamental harus bisa disimpan dan di-load."""
+    sm = StorageManager(db_path=temp_db)
+    metrics = {
+        "pe": 15.4,
+        "pb": 2.1,
+        "dividend_yield": 0.035,
+        "roe": 0.185,
+        "der": 0.45,
+        "eps": 250.0,
+        "market_cap": 500000000000.0,
+    }
+    sm.save_fundamentals("BBCA.JK", metrics)
+    loaded = sm.load_fundamentals("BBCA.JK")
+    assert loaded is not None
+    assert loaded["pe"] == 15.4
+    assert loaded["pb"] == 2.1
+    assert loaded["roe"] == 0.185
+    assert loaded["eps"] == 250.0
+    assert loaded["ticker"] == "BBCA.JK"
+    assert loaded["last_updated"] is not None
+
+    all_funds = sm.load_all_fundamentals()
+    assert len(all_funds) == 1
+    assert "pe" in all_funds.columns
+

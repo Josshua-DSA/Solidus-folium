@@ -35,7 +35,7 @@ class StorageManager:
     # ------------------------------------------------------------------
 
     def _init_db(self) -> None:
-        """Buat tabel prices jika belum ada."""
+        """Buat tabel prices dan fundamentals jika belum ada."""
         with self._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS prices (
@@ -48,6 +48,19 @@ class StorageManager:
                     volume     INTEGER,
                     log_return REAL,
                     PRIMARY KEY (date, ticker)
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS fundamentals (
+                    ticker         TEXT    PRIMARY KEY,
+                    pe             REAL,
+                    pb             REAL,
+                    dividend_yield REAL,
+                    roe            REAL,
+                    der            REAL,
+                    eps            REAL,
+                    market_cap     REAL,
+                    last_updated   TEXT
                 )
             """)
             conn.commit()
@@ -184,6 +197,51 @@ class StorageManager:
                 "SELECT MIN(date), MAX(date) FROM prices"
             ).fetchone()
         return result if result else (None, None)
+
+    def save_fundamentals(self, ticker: str, metrics: dict) -> None:
+        """
+        Simpan data fundamental saham ke database.
+        """
+        import datetime
+        last_updated = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with self._connect() as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO fundamentals
+                (ticker, pe, pb, dividend_yield, roe, der, eps, market_cap, last_updated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                ticker,
+                metrics.get("pe"),
+                metrics.get("pb"),
+                metrics.get("dividend_yield"),
+                metrics.get("roe"),
+                metrics.get("der"),
+                metrics.get("eps"),
+                metrics.get("market_cap"),
+                last_updated
+            ))
+            conn.commit()
+
+    def load_fundamentals(self, ticker: str) -> Optional[dict]:
+        """
+        Muat data fundamental saham tertentu.
+        """
+        with self._connect() as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT * FROM fundamentals WHERE ticker = ?", (ticker,)
+            ).fetchone()
+        if row:
+            return dict(row)
+        return None
+
+    def load_all_fundamentals(self) -> pd.DataFrame:
+        """
+        Muat semua data fundamental ke DataFrame.
+        """
+        with self._connect() as conn:
+            df = pd.read_sql_query("SELECT * FROM fundamentals", conn)
+        return df
 
     def __repr__(self) -> str:
         tickers = self.get_available_tickers()

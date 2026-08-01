@@ -37,9 +37,10 @@ def main_menu():
     console.print("3. Evaluation (LSTM Backtest)")
     console.print("4. Ensemble Backtest (LSTM + XGBoost)")
     console.print("5. Hyperparameter Tuning (Optimize LSTM)")
+    console.print("6. Launch TUI Dashboard (Oceanic Frost Theme)")
     console.print("X. Exit")
 
-    choice = Prompt.ask("\nSelect action", choices=["0", "1", "2", "3", "4", "5", "X", "x"], default="1")
+    choice = Prompt.ask("\nSelect action", choices=["0", "1", "2", "3", "4", "5", "6", "X", "x"], default="6")
     
     if choice == "0":
         setup_menu()
@@ -63,6 +64,10 @@ def main_menu():
         ensemble_eval_menu()
     elif choice == "5":
         tune_menu()
+    elif choice == "6":
+        tui_path = "frontend/tui_runner.py" if os.path.exists("frontend/tui_runner.py") else "../frontend/tui_runner.py"
+        console.print(f"\n[yellow]Launching TUI Dashboard from {tui_path}...[/yellow]\n")
+        subprocess.run([sys.executable, tui_path])
     elif choice.upper() == "X":
         console.print("[dim]Goodbye![/dim]")
         sys.exit(0)

@@ -157,26 +157,26 @@ class TUIApp:
         self.backtest_progress = 0
 
     def run(self):
-        """Main rendering loop."""
-        self.console.clear()
+        """Main rendering loop without Live to completely eliminate terminal flicker."""
+        state_changed = True
         
-        # Main TUI Layout
-        layout = Layout()
-        layout.split_column(
-            Layout(name="header", size=3),
-            Layout(name="body", ratio=8),
-            Layout(name="footer", size=3)
-        )
-        
-        layout["header"].update(self.draw_header())
-        layout["footer"].update(self.draw_footer())
-        
-        with Live(layout, refresh_per_second=4, screen=True) as live:
-            # Gunakan KeyPressReader sebagai context manager agar terminal raw di-set HANYA SEKALI
-            with self.reader as reader:
-                while True:
-                    # Update header
+        with self.reader as reader:
+            while True:
+                if state_changed:
+                    # Clear screen using terminal escape codes (clean and fast)
+                    sys.stdout.write("\x1b[2J\x1b[H")
+                    sys.stdout.flush()
+                    
+                    # Reconstruct Layout
+                    layout = Layout()
+                    layout.split_column(
+                        Layout(name="header", size=3),
+                        Layout(name="body", ratio=8),
+                        Layout(name="footer", size=3)
+                    )
+                    
                     layout["header"].update(self.draw_header())
+                    layout["footer"].update(self.draw_footer())
                     
                     # Handle active screen view
                     if self.active_screen == "dashboard":
@@ -191,70 +191,94 @@ class TUIApp:
                         layout["body"].update(draw_inspect(self.current_ticker, self.db_empty, self.storage))
                     elif self.active_screen == "backtest":
                         layout["body"].update(draw_backtest(self.backtest_running, self.backtest_progress))
-
-                    # Handle background backtest progress
-                    if self.backtest_running:
-                        self.backtest_progress += 10
-                        time.sleep(0.2)
-                        if self.backtest_progress >= 100:
-                            self.backtest_running = False
-                            self.msg = "Backtest run complete."
-                            self.msg_color = AURORA_GREEN
-                        continue
-
-                    # Read key non-blocking
-                    key = reader.get_key(timeout=0.1)
-                    if not key:
-                        time.sleep(0.05)
-                        continue
                     
-                    # Input handling
-                    key_lower = key.lower()
+                    # Print the layout directly
+                    self.console.print(layout)
+                    state_changed = False
+
+                # Handle background backtest progress with direct updates
+                if self.backtest_running:
+                    # Reconstruct Layout
+                    layout = Layout()
+                    layout.split_column(
+                        Layout(name="header", size=3),
+                        Layout(name="body", ratio=8),
+                        Layout(name="footer", size=3)
+                    )
+                    layout["header"].update(self.draw_header())
+                    layout["footer"].update(self.draw_footer())
                     
-                    if key_lower == 'x':
-                        # Exit clean
-                        break
-                    elif key_lower == 'd':
-                        self.active_screen = "dashboard"
-                        self.msg = "Showing Dashboard."
-                        self.msg_color = FROST_TEAL
-                    elif key_lower == 's':
-                        self.active_screen = "scanner"
-                        self._generate_mock_signals()
-                        self.msg = "Running alpha scan on active tickers."
-                        self.msg_color = FROST_LIGHT
-                    elif key_lower == 'p':
-                        self.active_screen = "portfolio"
-                        self.msg = "Portfolio Ledger loaded."
-                        self.msg_color = FROST_BLUE
-                    elif key_lower == 'i':
-                        # Temporary exit live screen to query ticker
-                        live.stop()
-                        reader.restore_normal()  # restore terminal to normal for input()
+                    for p in range(0, 101, 10):
+                        self.backtest_progress = p
+                        sys.stdout.write("\x1b[2J\x1b[H")
+                        sys.stdout.flush()
+                        layout["body"].update(draw_backtest(True, self.backtest_progress))
+                        self.console.print(layout)
+                        time.sleep(0.15)
                         
-                        self.console.print("\n")
-                        self.console.print(Panel(
-                            f" INSPECT TICKER\nMasukkan Ticker Saham (LQ45, misal: [bold]BBCA[/bold] atau [bold]BBCA.JK[/bold])",
-                            border_style=AURORA_PURPLE
-                        ))
-                        raw_ticker = input(" Ticker: ").strip()
-                        if raw_ticker:
-                            if not raw_ticker.upper().endswith(".JK"):
-                                self.current_ticker = raw_ticker.upper() + ".JK"
-                            else:
-                                self.current_ticker = raw_ticker.upper()
-                            self.msg = f"Inspecting stock: {self.current_ticker}"
-                            self.msg_color = AURORA_PURPLE
-                        
-                        self.active_screen = "inspect"
-                        reader.set_raw()  # set back to raw mode
-                        live.start()
-                    elif key_lower == 'b':
-                        self.active_screen = "backtest"
-                        if not self.backtest_running:
-                            self.msg = "Starting backtest..."
-                            self.msg_color = AURORA_PURPLE
-                            self.run_backtest_process()
+                    self.backtest_running = False
+                    self.msg = "Backtest run complete."
+                    self.msg_color = AURORA_GREEN
+                    state_changed = True
+                    continue
+
+                # Read key - BLOCKING (timeout=None) to consume 0% CPU and render only on event
+                key = reader.get_key(timeout=None)
+                if not key:
+                    continue
+                
+                # Input handling
+                key_lower = key.lower()
+                
+                if key_lower == 'x':
+                    # Exit clean
+                    break
+                elif key_lower == 'd':
+                    self.active_screen = "dashboard"
+                    self.msg = "Showing Dashboard."
+                    self.msg_color = FROST_TEAL
+                    state_changed = True
+                elif key_lower == 's':
+                    self.active_screen = "scanner"
+                    self._generate_mock_signals()
+                    self.msg = "Running alpha scan on active tickers."
+                    self.msg_color = FROST_LIGHT
+                    state_changed = True
+                elif key_lower == 'p':
+                    self.active_screen = "portfolio"
+                    self.msg = "Portfolio Ledger loaded."
+                    self.msg_color = FROST_BLUE
+                    state_changed = True
+                elif key_lower == 'i':
+                    # Temporary exit to query ticker
+                    sys.stdout.write("\x1b[2J\x1b[H")
+                    sys.stdout.flush()
+                    reader.restore_normal()  # restore terminal to normal for input()
+                    
+                    self.console.print("\n")
+                    self.console.print(Panel(
+                        f" INSPECT TICKER\nMasukkan Ticker Saham (LQ45, misal: [bold]BBCA[/bold] atau [bold]BBCA.JK[/bold])",
+                        border_style=AURORA_PURPLE
+                    ))
+                    raw_ticker = input(" Ticker: ").strip()
+                    if raw_ticker:
+                        if not raw_ticker.upper().endswith(".JK"):
+                            self.current_ticker = raw_ticker.upper() + ".JK"
+                        else:
+                            self.current_ticker = raw_ticker.upper()
+                        self.msg = f"Inspecting stock: {self.current_ticker}"
+                        self.msg_color = AURORA_PURPLE
+                    
+                    self.active_screen = "inspect"
+                    reader.set_raw()  # set back to raw mode
+                    state_changed = True
+                elif key_lower == 'b':
+                    self.active_screen = "backtest"
+                    if not self.backtest_running:
+                        self.msg = "Starting backtest..."
+                        self.msg_color = AURORA_PURPLE
+                        self.run_backtest_process()
+                        state_changed = True
 
 if __name__ == "__main__":
     app = TUIApp()

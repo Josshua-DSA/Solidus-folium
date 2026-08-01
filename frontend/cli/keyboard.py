@@ -40,7 +40,10 @@ class KeyPressReader:
 
     def get_key(self, timeout=0.1):
         if not has_termios or self.old_settings is None:
-            time.sleep(timeout)
+            if timeout is not None:
+                time.sleep(timeout)
+            else:
+                time.sleep(0.1)
             return None
         
         try:

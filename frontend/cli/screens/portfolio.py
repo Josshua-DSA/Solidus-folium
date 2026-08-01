@@ -5,8 +5,10 @@ from frontend.cli.theme import (
     FROST_BLUE, FROST_LIGHT, SNOW_STORM_1, SNOW_STORM_2, SNOW_STORM_3,
     AURORA_GREEN, AURORA_RED, POLAR_NIGHT_3
 )
+from decimal import Decimal
+from typing import Any
 
-def draw_portfolio(portfolio: list, capital: float) -> Panel:
+def draw_portfolio(portfolio: list, capital: Any) -> Panel:
     """Draws the current active positions and capital allocation."""
     table = Table(show_header=True, header_style=f"bold {FROST_LIGHT}", box=None)
     table.add_column("Ticker", style=f"bold {SNOW_STORM_3}")
@@ -19,15 +21,15 @@ def draw_portfolio(portfolio: list, capital: float) -> Panel:
     table.add_column("PnL %", justify="right")
     table.add_column("SL / TP", justify="center", style=FROST_BLUE)
 
-    total_cost = 0.0
-    total_value = 0.0
-    total_pnl = 0.0
+    total_cost = Decimal("0.00")
+    total_value = Decimal("0.00")
+    total_pnl = Decimal("0.00")
 
     for pos in portfolio:
-        cost = pos["shares"] * pos["avg_price"]
-        value = pos["shares"] * pos["current_price"]
+        cost = Decimal(str(pos["shares"])) * Decimal(str(pos["avg_price"]))
+        value = Decimal(str(pos["shares"])) * Decimal(str(pos["current_price"]))
         pnl = value - cost
-        pnl_pct = (pnl / cost) * 100
+        pnl_pct = (pnl / cost) * 100 if cost > 0 else Decimal("0.00")
         
         total_cost += cost
         total_value += value
@@ -49,9 +51,9 @@ def draw_portfolio(portfolio: list, capital: float) -> Panel:
             f"{pos['sl']:,.0f} / {pos['tp']:,.0f}"
         )
         
-    free_cash = capital - total_cost
+    free_cash = Decimal(str(capital)) - total_cost
     portfolio_equity = free_cash + total_value
-    net_return = ((portfolio_equity - capital) / capital) * 100
+    net_return = ((portfolio_equity - Decimal(str(capital))) / Decimal(str(capital))) * 100 if capital > 0 else Decimal("0.00")
     net_return_color = AURORA_GREEN if net_return >= 0 else AURORA_RED
 
     summary_table = Table(show_header=False, box=None)
@@ -62,7 +64,7 @@ def draw_portfolio(portfolio: list, capital: float) -> Panel:
     summary_table.add_row("Total Assets Cost:", f"Rp {total_cost:,.0f}")
     summary_table.add_row("Current Assets Value:", f"Rp {total_value:,.0f}")
     summary_table.add_row("Portfolio Net Equity:", f"Rp {portfolio_equity:,.0f}")
-    summary_table.add_row("Net Return:", f"[{net_return_color}]{net_return:+.2f}% (Rp {portfolio_equity-capital:+,.0f})[/{net_return_color}]")
+    summary_table.add_row("Net Return:", f"[{net_return_color}]{net_return:+.2f}% (Rp {portfolio_equity-Decimal(str(capital)):+,.0f})[/{net_return_color}]")
 
     outer_table = Table(show_header=False, box=None)
     outer_table.add_column("col1")

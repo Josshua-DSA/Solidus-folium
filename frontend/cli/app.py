@@ -40,9 +40,13 @@ from frontend.cli.theme import (
     POLAR_NIGHT_3, LQ45_FUNDAMENTALS
 )
 from frontend.cli.keyboard import KeyPressReader
-from frontend.cli.screens import (
-    draw_dashboard, draw_scanner, draw_portfolio, draw_inspect, draw_backtest
-)
+from frontend.cli.dashboard import draw_dashboard
+from frontend.cli.scanner import draw_scanner
+from frontend.cli.portfolio import draw_portfolio
+from frontend.cli.inspect import draw_inspect
+from frontend.cli.backtest import draw_backtest
+from frontend.cli.broker import draw_broker
+from frontend.cli.web_charts import generate_candlestick_html
 
 class TUIApp:
     def __init__(self):
@@ -118,6 +122,20 @@ class TUIApp:
             {"ticker": "BMRI.JK", "shares": 8000, "avg_price": Decimal("6100.00"), "current_price": Decimal("6400.00"), "sl": Decimal("5900.00"), "tp": Decimal("6600.00")},
         ]
         
+        # Transaction History matching Fincept Ledger details
+        self.transaction_history = [
+            {"date": "2026-05-20", "symbol": "BBCA.JK", "type": "BUY", "qty": Decimal("5000.00"), "price": Decimal("9850.00"), "total": Decimal("49250000.00"), "notes": "Initial Entry - Confidence Score: 85%"},
+            {"date": "2026-05-21", "symbol": "TLKM.JK", "type": "BUY", "qty": Decimal("10000.00"), "price": Decimal("3620.00"), "total": Decimal("36200000.00"), "notes": "Dip Buying - Conf: 70%"},
+            {"date": "2026-05-22", "symbol": "BMRI.JK", "type": "BUY", "qty": Decimal("8000.00"), "price": Decimal("6100.00"), "total": Decimal("48800000.00"), "notes": "Breakout Buy - Conf: 90%"}
+        ]
+
+        # Broker Integration & Sandbox API State
+        self.broker_accounts = {
+            "Stockbit": {"status": "DISCONNECTED", "api_key": "N/A", "balance": Decimal("0.00")},
+            "Ajaib": {"status": "DISCONNECTED", "api_key": "N/A", "balance": Decimal("0.00")},
+            "Nanovest": {"status": "DISCONNECTED", "api_key": "N/A", "balance": Decimal("0.00")}
+        }
+        
         # Backtest state
         self.backtest_results = None
         self.backtest_running = False
@@ -151,23 +169,83 @@ class TUIApp:
             })
         self.scanner_signals.sort(key=lambda x: x["score"], reverse=True)
 
-    def draw_header(self) -> Text:
-        """Draws the Oceanic Frost header as a single borderless reversed-color bar."""
-        header_text = Text()
-        header_text.append(" ▲ PAPERIUM QUANT TERMINAL ", style=f"bold {FROST_LIGHT}")
-        header_text.append(" | ", style=POLAR_NIGHT_3)
+    def draw_header(self) -> Table:
+        """Draws a professional, boxed multi-column Bloomberg/Fincept Terminal style header."""
+        from rich.columns import Columns
         
-        mode = "SIMULATION (MOCK)" if self.db_empty else "DATABASE ACTIVE"
-        mode_color = AURORA_ORANGE if self.db_empty else AURORA_GREEN
-        header_text.append(f"MODE: {mode}", style=f"bold {mode_color}")
-        header_text.append(" | ", style=POLAR_NIGHT_3)
+        # 1. Left Panel: Menu & Command Input Box
+        left_text = Text()
+        left_text.append("File  Navigate  View  Help\n", style=f"dim {SNOW_STORM_1}")
+        left_text.append("CMD>", style=f"bold {AURORA_ORANGE}")
+        left_text.append(" [Enter Command / Ticker]", style=f"italic {SNOW_STORM_2}")
+        left_panel = Panel(left_text, border_style=FROST_BLUE, title="MENU & CONSOLE", title_align="left")
         
-        header_text.append("CAPITAL: ", style=f"dim {SNOW_STORM_1}")
-        header_text.append(f"Rp {self.capital:,.0f}", style=f"bold {FROST_TEAL}")
-        header_text.append(" | ", style=POLAR_NIGHT_3)
+        # 2. Center Panel: System Brand & Mode
+        center_text = Text()
+        center_text.append("▲ FINCEPT QUANT DESK ▲\n", style=f"bold {FROST_LIGHT}")
+        mode_str = "● LIVE DATABASE ACTIVE" if not self.db_empty else "● SIMULATION / SANDBOX"
+        mode_color = AURORA_GREEN if not self.db_empty else AURORA_YELLOW
+        center_text.append(mode_str, style=f"bold {mode_color}")
+        center_panel = Panel(center_text, border_style=FROST_BLUE, title="SYSTEM NODE", title_align="center")
         
-        header_text.append(f"TIME: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", style=FROST_BLUE)
-        return header_text
+        # 3. Right Panel: User & Session Clock
+        right_text = Text()
+        right_text.append(f"{datetime.now().strftime('%d %b %y %H:%M:%S').upper()}\n", style=SNOW_STORM_1)
+        right_text.append("USER: ", style=f"dim {SNOW_STORM_1}")
+        right_text.append("josjiez ", style=f"bold {FROST_TEAL}")
+        right_text.append("[ENT]", style=f"bold {AURORA_ORANGE}")
+        right_panel = Panel(right_text, border_style=FROST_BLUE, title="SESSION INFO", title_align="right")
+        
+        # Grid for the three panels
+        top_grid = Table.grid(expand=True)
+        top_grid.add_column(ratio=2)
+        top_grid.add_column(ratio=2)
+        top_grid.add_column(ratio=2)
+        top_grid.add_row(left_panel, center_panel, right_panel)
+        
+        # Row 2: Horizontal Navigation Tabs inside a bordered panel
+        tabs_text = Text()
+        tabs = [
+            ("D", "DASHBOARD", "dashboard"),
+            ("S", "SCANNER", "scanner"),
+            ("P", "PORTFOLIO", "portfolio"),
+            ("I", "INSPECT STOCK", "inspect"),
+            ("B", "BACKTEST LAB", "backtest"),
+            ("K", "BROKER CONNECT", "broker")
+        ]
+        
+        for key, name, screen in tabs:
+            if self.active_screen == screen:
+                tabs_text.append(f" ▐ {name} ({key}) ▐ ", style=f"bold black on {AURORA_ORANGE}")
+            else:
+                tabs_text.append(f"  {name} ({key})  ", style=f"bold {FROST_BLUE}")
+            tabs_text.append("  ", style=POLAR_NIGHT_3)
+            
+        tabs_panel = Panel(tabs_text, border_style=FROST_BLUE, title="ACTIVE WORKSPACES", title_align="left")
+        
+        # Row 3: Current breadcrumb indicator
+        breadcrumb = Table.grid(expand=True)
+        breadcrumb.add_column()
+        
+        breadcrumb_text = Text()
+        breadcrumb_text.append("─── ACTIVE NODE: ", style=POLAR_NIGHT_3)
+        breadcrumb_text.append(self.active_screen.upper(), style=f"bold {FROST_LIGHT}")
+        if self.active_screen == "inspect":
+            breadcrumb_text.append(f" 🚩 EMITEN: {self.current_ticker} ", style=f"bold {AURORA_YELLOW}")
+            
+        _, cols = shutil.get_terminal_size()
+        rem = max(1, cols - len(breadcrumb_text.plain) - 2)
+        breadcrumb_text.append("─" * rem, style=POLAR_NIGHT_3)
+        breadcrumb.add_row(breadcrumb_text)
+        
+        # Main header table assembler
+        header_table = Table.grid(expand=True)
+        header_table.add_column()
+        header_table.add_row(top_grid)
+        header_table.add_row(tabs_panel)
+        header_table.add_row(breadcrumb)
+        
+        return header_table
 
     def draw_footer(self) -> Align:
         """Draws the command shortcut bar as a borderless 2-row table, exactly like GNU nano."""
@@ -183,7 +261,7 @@ class TUIApp:
         table.add_column(style=SNOW_STORM_2)
         
         table.add_row("D", "Dashboard", "S", "Scanner", "P", "Portfolio", "I", "Inspect Stock")
-        table.add_row("T", "Transact (Buy/Sell)", "B", "Backtest Lab", "X", "Exit", "", "")
+        table.add_row("T", "Transact (Buy/Sell)", "B", "Backtest Lab", "K", "Broker Connect", "X", "Exit")
         
         return Align.center(table)
 
@@ -191,6 +269,65 @@ class TUIApp:
         """Simulates running the backtester fold-by-fold."""
         self.backtest_running = True
         self.backtest_progress = 0
+
+    def generate_and_open_web_chart(self):
+        """Generates and triggers opening of the TradingView candlestick chart."""
+        ticker_upper = self.current_ticker.upper()
+        ohlcv_list = []
+        prices_df = None
+        
+        if not self.db_empty and self.storage:
+            try:
+                prices_df = self.storage.load_prices([ticker_upper])
+            except Exception:
+                pass
+                
+        if prices_df is not None and len(prices_df) > 0:
+            prices_df = prices_df.sort_values("date")
+            for _, row in prices_df.tail(45).iterrows():
+                try:
+                    vol_val = row.get('volume', 1000000)
+                    vol_int = int(vol_val) if vol_val is not None else 1000000
+                except Exception:
+                    vol_int = 1000000
+                    
+                ohlcv_list.append({
+                    'date': str(row['date']),
+                    'open': float(row['open']),
+                    'high': float(row['high']),
+                    'low': float(row['low']),
+                    'close': float(row['close']),
+                    'volume': vol_int
+                })
+                
+        if not ohlcv_list:
+            # Generate mockup history candles
+            random.seed(hash(ticker_upper) % 1000)
+            base_price = 5000.0 + (random.random() - 0.5) * 4000.0
+            
+            from datetime import datetime, timedelta
+            curr_price = base_price
+            for i in range(45):
+                daily_change = (random.random() - 0.47) * 0.04 * curr_price
+                o = curr_price
+                c = curr_price + daily_change
+                h = max(o, c) + random.random() * 0.015 * curr_price
+                l = min(o, c) - random.random() * 0.015 * curr_price
+                v = int(random.uniform(50000, 2000000))
+                date_str = (datetime.now() - timedelta(days=45 - i)).strftime("%Y-%m-%d")
+                ohlcv_list.append({'date': date_str, 'open': o, 'high': h, 'low': l, 'close': c, 'volume': v})
+                curr_price = c
+                
+        # Generate the interactive lightweight chart HTML
+        chart_path = "/tmp/fincept_chart.html"
+        generate_candlestick_html(ticker_upper, ohlcv_list, chart_path)
+        
+        # Trigger default browser to display chart in fullscreen
+        try:
+            import subprocess
+            subprocess.Popen(["xdg-open", chart_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
 
     def run(self):
         """Main rendering loop without Live to completely eliminate terminal flicker."""
@@ -212,7 +349,7 @@ class TUIApp:
                     # Reconstruct Layout dengan tinggi menyesuaikan terminal pas
                     layout = Layout(size=rows)
                     layout.split_column(
-                        Layout(name="header", size=1),
+                        Layout(name="header", size=8),
                         Layout(name="body", ratio=1),
                         Layout(name="footer", size=2)
                     )
@@ -228,11 +365,13 @@ class TUIApp:
                     elif self.active_screen == "scanner":
                         layout["body"].update(draw_scanner(self.scanner_signals, self.db_empty))
                     elif self.active_screen == "portfolio":
-                        layout["body"].update(draw_portfolio(self.portfolio, self.capital))
+                        layout["body"].update(draw_portfolio(self.portfolio, self.capital, self.transaction_history))
                     elif self.active_screen == "inspect":
                         layout["body"].update(draw_inspect(self.current_ticker, self.db_empty, self.storage))
                     elif self.active_screen == "backtest":
                         layout["body"].update(draw_backtest(self.backtest_running, self.backtest_progress))
+                    elif self.active_screen == "broker":
+                        layout["body"].update(draw_broker(self.broker_accounts))
                     
                     # Print the layout directly
                     self.console.print(layout)
@@ -252,7 +391,7 @@ class TUIApp:
                     # Reconstruct Layout
                     layout = Layout(size=rows)
                     layout.split_column(
-                        Layout(name="header", size=1),
+                        Layout(name="header", size=8),
                         Layout(name="body", ratio=1),
                         Layout(name="footer", size=2)
                     )
@@ -324,7 +463,54 @@ class TUIApp:
                         self.msg_color = AURORA_PURPLE
                     
                     self.active_screen = "inspect"
+                    self.generate_and_open_web_chart()
                     reader.set_raw()  # set back to raw mode
+                    state_changed = True
+                elif key_lower == 'k':
+                    self.active_screen = "broker"
+                    self.msg = "Broker Connection panel loaded."
+                    self.msg_color = FROST_TEAL
+                    state_changed = True
+                elif key in ("1", "2", "3") and self.active_screen == "broker":
+                    # Toggle broker connection
+                    sys.stdout.write("\x1b[2J\x1b[H")
+                    sys.stdout.flush()
+                    reader.restore_normal()
+                    
+                    broker_names = {
+                        "1": ("Stockbit", Decimal("150000000.00")),
+                        "2": ("Ajaib", Decimal("250000000.00")),
+                        "3": ("Nanovest", Decimal("500000000.00"))
+                    }
+                    b_name, b_funds = broker_names[key]
+                    b_acct = self.broker_accounts[b_name]
+                    
+                    if b_acct["status"] == "CONNECTED":
+                        b_acct["status"] = "DISCONNECTED"
+                        b_acct["api_key"] = "N/A"
+                        b_acct["balance"] = Decimal("0.00")
+                        self.msg = f"Disconnected from {b_name} API."
+                        self.msg_color = AURORA_RED
+                    else:
+                        self.console.print("\n")
+                        self.console.print(Panel(
+                            f" [bold {FROST_LIGHT}]CONNECT TO {b_name.upper()} SANDBOX API[/bold {FROST_LIGHT}]\n\n"
+                            f"  Masukkan Client API Key untuk menghubungkan akun demo/sandbox Anda.",
+                            border_style=FROST_BLUE,
+                            padding=(1, 2)
+                        ))
+                        api_key = input(f" {b_name} API Key: ").strip()
+                        if api_key:
+                            b_acct["status"] = "CONNECTED"
+                            b_acct["api_key"] = api_key
+                            b_acct["balance"] = b_funds
+                            self.msg = f"Connected successfully to {b_name} API!"
+                            self.msg_color = AURORA_GREEN
+                        else:
+                            self.msg = "Broker connection cancelled."
+                            self.msg_color = AURORA_YELLOW
+                            
+                    reader.set_raw()
                     state_changed = True
                 elif key_lower == 'b':
                     self.active_screen = "backtest"
@@ -482,6 +668,17 @@ class TUIApp:
                                 else:
                                     pos["shares"] = new_shares
                                 break
+
+                    # Record transaction history
+                    self.transaction_history.append({
+                        "date": datetime.now().strftime("%Y-%m-%d"),
+                        "symbol": self.current_ticker,
+                        "type": side_input,
+                        "qty": Decimal(str(shares)),
+                        "price": exec_price,
+                        "total": Decimal(str(shares)) * exec_price,
+                        "notes": f"TUI Exec - Comm: Rp {commission:,.0f}"
+                    })
 
                     self.msg = f"TRADE SUCCESS: {side_input} {lots} lot {self.current_ticker} @ Rp {exec_price:,.0f}."
                     self.msg_color = AURORA_GREEN

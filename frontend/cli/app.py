@@ -46,6 +46,7 @@ from frontend.cli.portfolio import draw_portfolio
 from frontend.cli.inspect import draw_inspect
 from frontend.cli.backtest import draw_backtest
 from frontend.cli.broker import draw_broker
+from frontend.cli.web_charts import generate_candlestick_html
 
 class TUIApp:
     def __init__(self):
@@ -169,32 +170,41 @@ class TUIApp:
         self.scanner_signals.sort(key=lambda x: x["score"], reverse=True)
 
     def draw_header(self) -> Table:
-        """Draws the multi-row Fincept Terminal style header, including navigation tabs."""
-        header_table = Table.grid(expand=True)
-        header_table.add_column()
+        """Draws a professional, boxed multi-column Bloomberg/Fincept Terminal style header."""
+        from rich.columns import Columns
         
-        # Row 1: File/View Menu & User Status
-        row1_table = Table.grid(expand=True)
-        row1_table.add_column(justify="left")
-        row1_table.add_column(justify="right")
+        # 1. Left Panel: Menu & Command Input Box
+        left_text = Text()
+        left_text.append("File  Navigate  View  Help\n", style=f"dim {SNOW_STORM_1}")
+        left_text.append("CMD>", style=f"bold {AURORA_ORANGE}")
+        left_text.append(" [Enter Command / Ticker]", style=f"italic {SNOW_STORM_2}")
+        left_panel = Panel(left_text, border_style=FROST_BLUE, title="MENU & CONSOLE", title_align="left")
         
-        menu_part = f" File  Navigate  View  Help  [bold white on {FROST_DARK}] > Enter Command or Ticker [/bold white on {FROST_DARK}]"
-        
-        status_part = Text()
-        status_part.append("FINCEPT QUANT DESK  ", style=f"bold {FROST_LIGHT}")
-        
-        mode_str = "● LIVE  " if not self.db_empty else "● SIM  "
+        # 2. Center Panel: System Brand & Mode
+        center_text = Text()
+        center_text.append("▲ FINCEPT QUANT DESK ▲\n", style=f"bold {FROST_LIGHT}")
+        mode_str = "● LIVE DATABASE ACTIVE" if not self.db_empty else "● SIMULATION / SANDBOX"
         mode_color = AURORA_GREEN if not self.db_empty else AURORA_YELLOW
-        status_part.append(mode_str, style=f"bold {mode_color}")
+        center_text.append(mode_str, style=f"bold {mode_color}")
+        center_panel = Panel(center_text, border_style=FROST_BLUE, title="SYSTEM NODE", title_align="center")
         
-        status_part.append(f"{datetime.now().strftime('%d %b %y %H:%M:%S').upper()}  ", style=SNOW_STORM_1)
-        status_part.append("josjiez  ", style=f"bold {FROST_TEAL}")
-        status_part.append("ENTERPRISE", style=f"bold {AURORA_ORANGE}")
+        # 3. Right Panel: User & Session Clock
+        right_text = Text()
+        right_text.append(f"{datetime.now().strftime('%d %b %y %H:%M:%S').upper()}\n", style=SNOW_STORM_1)
+        right_text.append("USER: ", style=f"dim {SNOW_STORM_1}")
+        right_text.append("josjiez ", style=f"bold {FROST_TEAL}")
+        right_text.append("[ENT]", style=f"bold {AURORA_ORANGE}")
+        right_panel = Panel(right_text, border_style=FROST_BLUE, title="SESSION INFO", title_align="right")
         
-        row1_table.add_row(menu_part, status_part)
+        # Grid for the three panels
+        top_grid = Table.grid(expand=True)
+        top_grid.add_column(ratio=2)
+        top_grid.add_column(ratio=2)
+        top_grid.add_column(ratio=2)
+        top_grid.add_row(left_panel, center_panel, right_panel)
         
-        # Row 2: Horizontal Navigation Tabs
-        row2_text = Text()
+        # Row 2: Horizontal Navigation Tabs inside a bordered panel
+        tabs_text = Text()
         tabs = [
             ("D", "DASHBOARD", "dashboard"),
             ("S", "SCANNER", "scanner"),
@@ -206,26 +216,34 @@ class TUIApp:
         
         for key, name, screen in tabs:
             if self.active_screen == screen:
-                row2_text.append(f" ▐ {name} ({key}) ▐ ", style=f"bold black on {AURORA_ORANGE}")
+                tabs_text.append(f" ▐ {name} ({key}) ▐ ", style=f"bold black on {AURORA_ORANGE}")
             else:
-                row2_text.append(f"  {name} ({key})  ", style=f"bold {FROST_BLUE}")
-            row2_text.append(" │", style=POLAR_NIGHT_3)
+                tabs_text.append(f"  {name} ({key})  ", style=f"bold {FROST_BLUE}")
+            tabs_text.append("  ", style=POLAR_NIGHT_3)
             
-        # Row 3: Active view path and divider line
-        row3_text = Text()
-        row3_text.append("───", style=POLAR_NIGHT_3)
-        row3_text.append(f" ACTIVE SCREEN: {self.active_screen.upper()} ", style=f"bold {FROST_LIGHT}")
+        tabs_panel = Panel(tabs_text, border_style=FROST_BLUE, title="ACTIVE WORKSPACES", title_align="left")
+        
+        # Row 3: Current breadcrumb indicator
+        breadcrumb = Table.grid(expand=True)
+        breadcrumb.add_column()
+        
+        breadcrumb_text = Text()
+        breadcrumb_text.append("─── ACTIVE NODE: ", style=POLAR_NIGHT_3)
+        breadcrumb_text.append(self.active_screen.upper(), style=f"bold {FROST_LIGHT}")
         if self.active_screen == "inspect":
-            row3_text.append(f"> Ticker: {self.current_ticker} ", style=f"bold {AURORA_YELLOW}")
-        
-        # We dynamic fill the remaining line
+            breadcrumb_text.append(f" 🚩 EMITEN: {self.current_ticker} ", style=f"bold {AURORA_YELLOW}")
+            
         _, cols = shutil.get_terminal_size()
-        rem = max(1, cols - len(row3_text.plain) - 2)
-        row3_text.append("─" * rem, style=POLAR_NIGHT_3)
+        rem = max(1, cols - len(breadcrumb_text.plain) - 2)
+        breadcrumb_text.append("─" * rem, style=POLAR_NIGHT_3)
+        breadcrumb.add_row(breadcrumb_text)
         
-        header_table.add_row(row1_table)
-        header_table.add_row(row2_text)
-        header_table.add_row(row3_text)
+        # Main header table assembler
+        header_table = Table.grid(expand=True)
+        header_table.add_column()
+        header_table.add_row(top_grid)
+        header_table.add_row(tabs_panel)
+        header_table.add_row(breadcrumb)
         
         return header_table
 
@@ -252,6 +270,65 @@ class TUIApp:
         self.backtest_running = True
         self.backtest_progress = 0
 
+    def generate_and_open_web_chart(self):
+        """Generates and triggers opening of the TradingView candlestick chart."""
+        ticker_upper = self.current_ticker.upper()
+        ohlcv_list = []
+        prices_df = None
+        
+        if not self.db_empty and self.storage:
+            try:
+                prices_df = self.storage.load_prices([ticker_upper])
+            except Exception:
+                pass
+                
+        if prices_df is not None and len(prices_df) > 0:
+            prices_df = prices_df.sort_values("date")
+            for _, row in prices_df.tail(45).iterrows():
+                try:
+                    vol_val = row.get('volume', 1000000)
+                    vol_int = int(vol_val) if vol_val is not None else 1000000
+                except Exception:
+                    vol_int = 1000000
+                    
+                ohlcv_list.append({
+                    'date': str(row['date']),
+                    'open': float(row['open']),
+                    'high': float(row['high']),
+                    'low': float(row['low']),
+                    'close': float(row['close']),
+                    'volume': vol_int
+                })
+                
+        if not ohlcv_list:
+            # Generate mockup history candles
+            random.seed(hash(ticker_upper) % 1000)
+            base_price = 5000.0 + (random.random() - 0.5) * 4000.0
+            
+            from datetime import datetime, timedelta
+            curr_price = base_price
+            for i in range(45):
+                daily_change = (random.random() - 0.47) * 0.04 * curr_price
+                o = curr_price
+                c = curr_price + daily_change
+                h = max(o, c) + random.random() * 0.015 * curr_price
+                l = min(o, c) - random.random() * 0.015 * curr_price
+                v = int(random.uniform(50000, 2000000))
+                date_str = (datetime.now() - timedelta(days=45 - i)).strftime("%Y-%m-%d")
+                ohlcv_list.append({'date': date_str, 'open': o, 'high': h, 'low': l, 'close': c, 'volume': v})
+                curr_price = c
+                
+        # Generate the interactive lightweight chart HTML
+        chart_path = "/tmp/fincept_chart.html"
+        generate_candlestick_html(ticker_upper, ohlcv_list, chart_path)
+        
+        # Trigger default browser to display chart in fullscreen
+        try:
+            import subprocess
+            subprocess.Popen(["xdg-open", chart_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+
     def run(self):
         """Main rendering loop without Live to completely eliminate terminal flicker."""
         state_changed = True
@@ -272,7 +349,7 @@ class TUIApp:
                     # Reconstruct Layout dengan tinggi menyesuaikan terminal pas
                     layout = Layout(size=rows)
                     layout.split_column(
-                        Layout(name="header", size=3),
+                        Layout(name="header", size=8),
                         Layout(name="body", ratio=1),
                         Layout(name="footer", size=2)
                     )
@@ -314,7 +391,7 @@ class TUIApp:
                     # Reconstruct Layout
                     layout = Layout(size=rows)
                     layout.split_column(
-                        Layout(name="header", size=3),
+                        Layout(name="header", size=8),
                         Layout(name="body", ratio=1),
                         Layout(name="footer", size=2)
                     )
@@ -386,6 +463,7 @@ class TUIApp:
                         self.msg_color = AURORA_PURPLE
                     
                     self.active_screen = "inspect"
+                    self.generate_and_open_web_chart()
                     reader.set_raw()  # set back to raw mode
                     state_changed = True
                 elif key_lower == 'k':

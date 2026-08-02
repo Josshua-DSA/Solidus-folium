@@ -4,13 +4,14 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.layout import Layout
 from rich.text import Text
+from frontend.cli.charts import plot_ascii_candlestick
 from frontend.cli.theme import (
     FROST_BLUE, FROST_LIGHT, FROST_TEAL, SNOW_STORM_1, SNOW_STORM_2, SNOW_STORM_3,
     AURORA_GREEN, AURORA_YELLOW, AURORA_RED, AURORA_ORANGE, POLAR_NIGHT_3, LQ45_FUNDAMENTALS
 )
 
 def draw_inspect(ticker: str, db_empty: bool, storage) -> Layout:
-    """Draws a professional 3-column Equity Research screen matching the Fincept style."""
+    """Draws a professional 3-column Equity Research screen in Python matching the Fincept style."""
     grid = Layout()
     grid.split_column(
         Layout(name="inspect_top", ratio=1),
@@ -85,16 +86,50 @@ def draw_inspect(ticker: str, db_empty: bool, storage) -> Layout:
         padding=(0, 1)
     )
     
-    # 2. Center Panel: Candlestick Chart (Simulated 1Y)
+    # 2. Center Panel: Dynamic ASCII Candlestick Chart from DB or realistic mock data
+    ohlcv_list = []
+    prices_df = None
+    
+    if not db_empty and storage:
+        try:
+            prices_df = storage.load_prices([ticker_upper])
+        except Exception:
+            pass
+            
+    if prices_df is not None and len(prices_df) > 0:
+        # Load real data points from DB
+        prices_df = prices_df.sort_values("date")
+        for _, row in prices_df.tail(30).iterrows():
+            ohlcv_list.append({
+                'open': float(row['open']),
+                'high': float(row['high']),
+                'low': float(row['low']),
+                'close': float(row['close']),
+            })
+            
+    if not ohlcv_list:
+        # Generate realistic mockup historical candle data (30 days)
+        # Deterministic base price based on ticker hash
+        random.seed(hash(ticker_upper) % 1000)
+        base_price = 5000.0 + (random.random() - 0.5) * 4000.0
+        
+        # Simulasikan tren pergerakan harga harian
+        curr_price = base_price
+        for i in range(30):
+            daily_change = (random.random() - 0.47) * 0.04 * curr_price # slight positive drift
+            o = curr_price
+            c = curr_price + daily_change
+            h = max(o, c) + random.random() * 0.015 * curr_price
+            l = min(o, c) - random.random() * 0.015 * curr_price
+            ohlcv_list.append({'open': o, 'high': h, 'low': l, 'close': c})
+            curr_price = c
+            
+    chart_lines = plot_ascii_candlestick(ohlcv_list, width=38, height=6)
+    
     chart_text = Text()
-    chart_text.append("\n  1Y CANDLESTICK CHART & VOLUME (Rp):\n\n", style=f"bold {FROST_LIGHT}")
-    chart_text.append("  12,000 |                 ▲   ▲\n")
-    chart_text.append("  11,000 |             ▲ █ █ █ █   ▲\n")
-    chart_text.append("  10,000 |         ▲ █ █ █ █ █ █ █ █   ▲\n")
-    chart_text.append("   9,000 |   ▲ █ █ █ █ █ █ █ █ █ █ █ █ █\n")
-    chart_text.append("   8,000 | █ █ █ █ █ █ █ █ █ █ █ █ █ █ █ █\n")
-    chart_text.append("         +───────────────────────────────────\n")
-    chart_text.append("           Jun   Aug   Oct   Dec   Feb   Apr\n\n", style=POLAR_NIGHT_3)
+    chart_text.append("  30D HISTORIC PRICE (OHLCV CANDLES):\n\n", style=f"bold {FROST_LIGHT}")
+    chart_text.append_text(chart_lines)
+    chart_text.append("\n")
     
     # ML Prediction bars combined
     chart_text.append("  ML SIGNAL DIRECTION (5D HORIZON):\n", style=f"bold {FROST_BLUE}")
@@ -158,7 +193,7 @@ def draw_inspect(ticker: str, db_empty: bool, storage) -> Layout:
     inspect_left = inspect_top["inspect_left"]
     inspect_center = inspect_top["inspect_center"]
     inspect_right = inspect_top["inspect_right"]
-    
+
     inspect_left.update(left_panel)
     inspect_center.update(center_panel)
     inspect_right.update(right_panel)

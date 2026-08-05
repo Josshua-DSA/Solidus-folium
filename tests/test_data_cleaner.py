@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from data_layer.data_cleaner import DataCleaner
+from pipeline.data_cleaner import DataCleaner
 
 
 def test_remove_anomaly():

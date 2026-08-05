@@ -1,4 +1,6 @@
 """
-App Package — Orkestrasi aplikasi: optimization, backtest, execution, risk.
-Boleh import dari shared/, data_layer/, dan load artifact dari model/.
+App Package — Orkestrasi aplikasi: optimization, backtest, execution, risk, strategies.
+Boleh import dari shared/ dan pipeline/.
+Hanya LOAD ARTIFACT dari model/ (tidak import langsung).
+TIDAK BOLEH import dari frontend/.
 """

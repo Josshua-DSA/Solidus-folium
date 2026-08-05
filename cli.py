@@ -1,6 +1,9 @@
 """
-QUANT TRADING IDX v7 — CLI Entry Point
+QUANT TRADING IDX v7 — CLI Entry Point & DI Orchestrator
 Menggunakan Typer untuk command-line interface.
+
+Satu-satunya tempat yang boleh import dari semua package.
+Bertindak sebagai Dependency Injection orchestrator.
 
 Usage:
     python cli.py fetch          — Download & simpan data ke SQLite
@@ -8,6 +11,7 @@ Usage:
     python cli.py features       — Build fitur teknikal
     python cli.py backtest       — Jalankan backtest baseline
     python cli.py status         — Cek status database & pipeline
+    python cli.py health         — Cek konektivitas API eksternal
 """
 import typer
 from rich.console import Console
@@ -32,9 +36,9 @@ def fetch(
     cache_days: int = typer.Option(7, help="Cache validity (days)"),
 ):
     """Download data saham dari yfinance dan simpan ke SQLite."""
-    from data_layer.universe import UniverseManager
-    from data_layer.fetcher import DataFetcher
-    from data_layer.storage import StorageManager
+    from pipeline.universe import UniverseManager
+    from pipeline.fetcher import DataFetcher
+    from pipeline.storage import StorageManager
 
     console.print(f"[bold cyan]Fetching data: universe={universe}, {start} → {end}[/bold cyan]")
 
@@ -67,8 +71,8 @@ def fetch(
 @app.command()
 def clean():
     """Jalankan pipeline DataCleaner pada data di database."""
-    from data_layer.storage import StorageManager
-    from data_layer.data_cleaner import DataCleaner
+    from pipeline.storage import StorageManager
+    from pipeline.data_cleaner import DataCleaner
 
     console.print("[bold cyan]Running DataCleaner pipeline...[/bold cyan]")
 
@@ -89,8 +93,8 @@ def clean():
 @app.command()
 def features():
     """Build fitur teknikal dari data bersih."""
-    from data_layer.storage import StorageManager
-    from data_layer.data_cleaner import DataCleaner
+    from pipeline.storage import StorageManager
+    from pipeline.data_cleaner import DataCleaner
     from shared.features.feature_builder import FeatureBuilder
 
     console.print("[bold cyan]Building features...[/bold cyan]")
@@ -118,15 +122,24 @@ def backtest(
     capital: float = typer.Option(100_000_000, help="Initial capital (Rp)"),
 ):
     """Jalankan backtest baseline (equal-weight momentum)."""
+    from model.trainer import get_model_factory
+    from app.backtest.walk_forward import WalkForwardValidator
+
     console.print("[bold cyan]Running baseline backtest...[/bold cyan]")
     console.print(f"  Initial capital: Rp{capital:,.0f}")
-    console.print("[yellow]⚠ Backtest engine akan diimplementasi penuh di Fase 2[/yellow]")
+
+    # DI: inject model factory ke WalkForwardValidator
+    model_factory = get_model_factory()
+    validator = WalkForwardValidator(model_factory=model_factory)
+
+    console.print(f"  Validator: {validator}")
+    console.print("[yellow]⚠ Full backtest engine akan diimplementasi penuh di Fase 5[/yellow]")
 
 
 @app.command()
 def status():
     """Cek status database dan pipeline."""
-    from data_layer.storage import StorageManager
+    from pipeline.storage import StorageManager
 
     console.print("[bold cyan]System Status[/bold cyan]")
     console.print("=" * 50)
@@ -142,6 +155,24 @@ def status():
         console.print(f"  [green]✓ Database OK[/green]")
     except Exception as e:
         console.print(f"  [red]✗ Database error: {e}[/red]")
+
+
+@app.command()
+def health():
+    """Cek konektivitas API eksternal."""
+    from health.health_checker import HealthChecker
+    from health.health_report import HealthReport
+
+    console.print("[bold cyan]Running health checks...[/bold cyan]")
+
+    checker = HealthChecker()
+    results = checker.check_all()
+    report = HealthReport()
+    console.print(report.format_report(results))
+
+    if checker.has_critical_failures():
+        console.print("[red]⚠ Critical API failures detected![/red]")
+        raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------

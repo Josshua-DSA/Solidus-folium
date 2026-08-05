@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from data_layer.storage import StorageManager
+from pipeline.storage import StorageManager
 
 
 @pytest.fixture

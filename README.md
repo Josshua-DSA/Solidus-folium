@@ -44,35 +44,120 @@ This codebase is split into modular layers designed to mirror professional insti
 
 ## 📂 Project Directory Structure
 
-```text
+``` text
 Finance-Pro/
-├── app/                       # Application & Execution Layer
-│   ├── execution/             # Order routing and execution simulation
-│   ├── optimization/          # Portfolio optimization and weights allocation
-│   └── risk/                  # Portfolio & pre-trade risk controls
 │
-├── data_layer/                # Data Acquisition & Cleaning
-│   ├── universe.py            # Universe selection & blacklists
-│   ├── fetcher.py             # Data fetching engine
-│   ├── storage.py             # SQLite interface & db management
-│   └── data_cleaner.py        # Outlier & corporate actions cleaner
-│
-├── shared/                    # Shared Utilities & Math Features
-│   ├── features/              # Fractional differentiation, Triple Barrier, Lasso
-│   └── utils/                 # Configuration & logging infrastructure
-│
-├── model/                     # Machine Learning & Walk-Forward Engines
-│   ├── xgboost_trainer.py     # XGBoost implementation
-│   ├── lightgbm_trainer.py    # LightGBM implementation
-│   ├── walk_forward.py        # Validation framework
-│   └── ensemble.py            # Combined models pipeline
+├── cli.py                            # Single CLI entry point (Typer + Rich)
+├── pyproject.toml
+├── requirements.txt
+├── README.md
 │
 ├── config/
-│   └── config.yaml            # Global system parameters & risk controls
-├── cli.py                     # Command Line Interface (Typer-based)
-└── README.md                  # System Documentation
-```
+│   └── config.yaml
+│
+├── context/                          # Documentation & AI Agent Context
+│   ├── ARCHITECTURE.md
+│   ├── DESIGN.md
+│   ├── PRD.md
+│   ├── RULES.md
+│   ├── SCHEMA.md
+│   ├── STRATEGY.md
+│   ├── IMPLEMENTATION.md
+│   └── checkpoint.md
+│
+├── data/                             # Storage murni / DB — BUKAN Python package
+│   ├── ihsg_trading.db
+│   ├── raw/
+│   └── processed/
+│
+├── pipeline/                         # Layer 1: Data Ingestion
+│   ├── __init__.py
+│   ├── universe.py
+│   ├── fetcher.py
+│   ├── crypto_fetcher.py
+│   ├── storage.py
+│   ├── data_cleaner.py
+│   └── blacklist.py
+│
+├── shared/                           # Shared Utilities & Financial Math (Stateless/OOP)
+│   ├── features/                     # Feature Engineering
+│   │   ├── feature_builder.py
+│   │   ├── feature_selection.py
+│   │   ├── fundamental_features.py
+│   │   ├── fractional_diff.py
+│   │   └── triple_barrier.py
+│   ├── financial_math/               # Pure Math & Valuation Engine
+│   │   ├── valuation.py              # DCF, pricing model
+│   │   └── cashflow_metrics.py       # Cashflow, ratio & return math
+│   └── utils/                        # Logging, helper, UI utilities
+│       ├── config_loader.py
+│       ├── logger.py
+│       ├── helper.py
+│       └── ui_renderer.py
+│
+├── model/                            # Layer 3: Alpha Models & ML R&D
+│   ├── __init__.py
+│   ├── trainer.py
+│   ├── evaluator.py
+│   ├── ensemble.py
+│   ├── autoencoder.py
+│   ├── walk_forward.py
+│   ├── xgboost_trainer.py
+│   └── lightgbm_trainer.py
+│
+├── app/                              # Layer 4–6: Quant Pipeline & Trading Engine
+│   ├── __init__.py
+│   ├── backtest/
+│   │   ├── backtester.py
+│   │   ├── walk_forward.py           # DI — tidak import model/ langsung
+│   │   ├── transaction_cost.py
+│   │   └── benchmark_runner.py
+│   ├── execution/
+│   │   ├── position_manager.py
+│   │   └── paper_executor.py
+│   ├── optimization/
+│   │   ├── portfolio_optimizer.py
+│   │   └── risk_model.py
+│   ├── risk/
+│   │   └── risk_manager.py
+│   └── strategies/
+│       ├── base_strategy.py
+│       ├── strategy_registry.py
+│       └── signal_combiner.py
+│
+├── frontend/                         # User Interface Layer (CLI TUI & Web GUI)
+│   ├── cli/
+│   │   ├── app.py
+│   │   ├── dashboard.py
+│   │   ├── scanner.py
+│   │   ├── tui_runner.py
+│   │   └── ui/
+│   ├── gui/
+│   └── README.md
+│
+├── health/                           # External API Connectivity & Diagnostics
+│   ├── health_checker.py
+│   ├── health_report.py
+│   └── apis/
+│       ├── broker/
+│       ├── llm/
+│       ├── data_api/
+│       └── trading_view/
+│
+├── Research_and_Journal/             # Research & Literature per Layer
+│   ├── layer-2/
+│   ├── layer-3/
+│   ├── layer-4/
+│   ├── layer-5/
+│   └── layer-6/
+│
+└── tests/                            # Unit Tests (root level)
+    ├── test_data_cleaner.py
+    ├── test_storage.py
+    ├── test_layer2_features.py
+    └── test_layer3_models.py
 
+```
 ---
 
 ## ⚡ Quick Start

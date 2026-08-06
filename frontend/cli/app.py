@@ -177,12 +177,12 @@ class TUIApp:
         left_text = Text()
         left_text.append("File  Navigate  View  Help\n", style=f"dim {SNOW_STORM_1}")
         left_text.append("CMD>", style=f"bold {AURORA_ORANGE}")
-        left_text.append(" [Enter Command / Ticker]", style=f"italic {SNOW_STORM_2}")
+        left_text.append(" [Enter Ticker (e.g. BBCA) | H Help | Q Quit]", style=f"italic {SNOW_STORM_2}")
         left_panel = Panel(left_text, border_style=FROST_BLUE, title="MENU & CONSOLE", title_align="left")
         
         # 2. Center Panel: System Brand & Mode
         center_text = Text()
-        center_text.append("▲ FINCEPT QUANT DESK ▲\n", style=f"bold {FROST_LIGHT}")
+        center_text.append("▲ FOLIUM QUANT DESK ▲\n", style=f"bold {FROST_LIGHT}")
         mode_str = "● LIVE DATABASE ACTIVE" if not self.db_empty else "● SIMULATION / SANDBOX"
         mode_color = AURORA_GREEN if not self.db_empty else AURORA_YELLOW
         center_text.append(mode_str, style=f"bold {mode_color}")

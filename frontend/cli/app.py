@@ -146,26 +146,62 @@ class TUIApp:
         self._generate_mock_signals()
 
     def _generate_mock_signals(self):
-        """Generates realistic scanner signals."""
+        """Generates realistic 3-class scanner signals across 24 LQ45 tickers with BUY, HOLD, SELL & realistic confidences."""
         random.seed(42)
         self.scanner_signals = []
-        for ticker in LQ45[:12]:
-            base_price = LQ45_FUNDAMENTALS.get(ticker, {"eps": 100})["eps"] * 12 + random.randint(-500, 500)
+        lq45_keys = list(LQ45_FUNDAMENTALS.keys())
+        
+        for idx, ticker in enumerate(lq45_keys[:24]):
+            base_price = LQ45_FUNDAMENTALS.get(ticker, {"eps": 100})["eps"] * 12 + random.randint(-200, 200)
             if base_price <= 0:
                 base_price = 1000
-            lstm_conf = 0.5 + random.random() * 0.45
-            xgb_conf = 0.5 + random.random() * 0.42
-            score = (lstm_conf + xgb_conf) / 2.0
+                
+            # Distribute scores realistically: some high BUYs, some mid HOLDs, some strong SELLs
+            # Tickers like HMSP, GGRM, SMGR get strong BEARISH signals (SELL 70%+)
+            if ticker in ("HMSP.JK", "GGRM.JK", "UNVR.JK", "SMGR.JK"):
+                lstm_conf = 0.72 + random.random() * 0.20
+                xgb_conf = 0.68 + random.random() * 0.22
+                score = (lstm_conf * 0.60) + (xgb_conf * 0.40)
+                action = "SELL"
+            elif ticker in ("BBCA.JK", "BBRI.JK", "BMRI.JK", "ICBP.JK", "ADRO.JK", "BBNI.JK", "PTBA.JK"):
+                lstm_conf = 0.75 + random.random() * 0.20
+                xgb_conf = 0.70 + random.random() * 0.22
+                score = (lstm_conf * 0.60) + (xgb_conf * 0.40)
+                action = "BUY"
+            elif ticker in ("TLKM.JK", "INDF.JK", "KLBF.JK"):
+                # Below 50% min conf threshold
+                score = 0.42 + random.random() * 0.06
+                lstm_conf = score
+                xgb_conf = score - 0.05
+                action = "HOLD"
+            else:
+                lstm_conf = 0.52 + random.random() * 0.15
+                xgb_conf = 0.50 + random.random() * 0.15
+                score = (lstm_conf * 0.60) + (xgb_conf * 0.40)
+                action = "HOLD" if score < 0.62 else "BUY"
             
+            sl_pct = 0.025 + random.random() * 0.015
+            tp_pct = sl_pct * (1.2 + random.random() * 0.8)
+            
+            sl_price = base_price * (1.0 - sl_pct) if action != "SELL" else base_price * (1.0 + sl_pct)
+            tp_price = base_price * (1.0 + tp_pct) if action != "SELL" else base_price * (1.0 - tp_pct)
+            rr_ratio = tp_pct / sl_pct
+            
+            vol_m = 10.0 + random.random() * 50.0
+                
             self.scanner_signals.append({
                 "ticker": ticker,
                 "price": base_price,
                 "lstm": lstm_conf,
                 "xgb": xgb_conf,
                 "score": score,
-                "sl": base_price * 0.97,
-                "tp": base_price * 1.03,
-                "action": "BUY" if score > 0.65 else "HOLD"
+                "sl": sl_price,
+                "tp": tp_price,
+                "sl_pct": sl_pct * 100.0,
+                "tp_pct": tp_pct * 100.0,
+                "rr_ratio": rr_ratio,
+                "volume_m": vol_m,
+                "action": action
             })
         self.scanner_signals.sort(key=lambda x: x["score"], reverse=True)
 

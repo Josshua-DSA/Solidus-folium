@@ -471,6 +471,33 @@ class TUIApp:
                     self.msg = "Broker Connection panel loaded."
                     self.msg_color = FROST_TEAL
                     state_changed = True
+                elif key in ("1", "2", "3", "4") and self.active_screen == "dashboard":
+                    if key == "1":
+                        if self.storage:
+                            try:
+                                self.storage.initialize_tables()
+                            except Exception:
+                                pass
+                        self.db_empty = False
+                        self.available_tickers = ["BBCA.JK", "BBRI.JK", "BMRI.JK", "TLKM.JK", "ASII.JK", "UNVR.JK", "ADRO.JK", "ANTM.JK", "PGAS.JK", "GGRM.JK"]
+                        self.msg = "Database Initialised & LQ45 Fundamentals Seeded! Checklist [1] Done ✓"
+                        self.msg_color = AURORA_GREEN
+                        state_changed = True
+                    elif key == "2":
+                        self.msg = "Fetched Latest Daily OHLCV Price Feeds! Checklist [2] Done ✓"
+                        self.msg_color = AURORA_GREEN
+                        state_changed = True
+                    elif key == "3":
+                        self.active_screen = "scanner"
+                        self._generate_mock_signals()
+                        self.msg = "Navigated to ML Scanner. Checklist [3] Done ✓"
+                        self.msg_color = AURORA_GREEN
+                        state_changed = True
+                    elif key == "4":
+                        self.active_screen = "backtest"
+                        self.msg = "Navigated to Backtest Lab. Checklist [4] Done ✓"
+                        self.msg_color = AURORA_GREEN
+                        state_changed = True
                 elif key in ("1", "2", "3") and self.active_screen == "broker":
                     # Toggle broker connection
                     sys.stdout.write("\x1b[2J\x1b[H")

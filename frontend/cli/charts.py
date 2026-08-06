@@ -1,4 +1,5 @@
 import math
+from typing import Optional
 from rich.text import Text
 
 
@@ -59,7 +60,7 @@ def plot_ascii_line(data: list, width: int = 40, height: int = 6) -> Text:
         else:
             label = f"{y_val:,.0f}"
             
-        result.append(f"{label:>8} │ ", style="dim")
+        result.append(f"{label:>8} │ ", style="#ECEFF4")
         
         row_str = "".join(canvas[r])
         line_color = "#A3BE8C" if data[-1] >= data[0] else "#BF616A"
@@ -72,12 +73,16 @@ def plot_ascii_line(data: list, width: int = 40, height: int = 6) -> Text:
     return result
 
 
-from typing import Optional
-
-def plot_ascii_candlestick(ohlcv_data: list, width: int = 52, height: int = 8, support_price: Optional[float] = None, resistance_price: Optional[float] = None) -> Text:
+def plot_ascii_candlestick(
+    ohlcv_data: list,
+    width: int = 54,
+    height: int = 9,
+    support_price: Optional[float] = None,
+    resistance_price: Optional[float] = None
+) -> Text:
     """
-    Plots an advanced ASCII Candlestick + Volume Combo Chart with Support/Resistance overlay.
-    Returns a rich.text.Text object formatted natively.
+    Plots a high-resolution ASCII Candlestick + Volume Combo Chart with Support/Resistance overlay
+    and historical volume scale metrics.
     """
     result = Text()
     
@@ -154,8 +159,7 @@ def plot_ascii_candlestick(ohlcv_data: list, width: int = 52, height: int = 8, s
         y_val = val_max - (r / (height - 1)) * val_range if height > 1 else val_max
         label = f"Rp {y_val:,.0f}"
         
-        # Check overlay tag
-        tag_style = "dim"
+        tag_style = "#ECEFF4"
         tag_prefix = " "
         if resistance_price and abs(y_val - resistance_price) / val_range < 0.08:
             tag_style = "bold #D08770"
@@ -175,12 +179,13 @@ def plot_ascii_candlestick(ohlcv_data: list, width: int = 52, height: int = 8, s
                 
         result.append("\n")
         
-    result.append(" " * 14 + "└" + "─" * width, style="dim")
+    result.append(" " * 14 + "└" + "─" * width, style="dim #4C566A")
     result.append("\n")
     
-    # Draw Volume Sub-Chart (2 Rows)
+    # Draw Volume Sub-Chart with 30D Avg Volume Marker
     volumes = [d.get('volume', 100000) for d in ohlcv_data]
     max_vol = max(volumes) if max(volumes) > 0 else 1.0
+    avg_vol = sum(volumes) / len(volumes) if len(volumes) > 0 else 1.0
     
     vol_row1 = []
     vol_row2 = []
@@ -191,25 +196,27 @@ def plot_ascii_candlestick(ohlcv_data: list, width: int = 52, height: int = 8, s
         is_bullish = day['close'] >= day['open']
         color = "#A3BE8C" if is_bullish else "#BF616A"
         
-        if norm_v >= 0.75:
+        if norm_v >= 0.70:
             vol_row1.append(("█", color))
             vol_row2.append(("█", color))
-        elif norm_v >= 0.40:
+        elif norm_v >= 0.35:
             vol_row1.append((" ", color))
             vol_row2.append(("█", color))
-        elif norm_v >= 0.15:
+        elif norm_v >= 0.12:
             vol_row1.append((" ", color))
             vol_row2.append(("▄", color))
         else:
             vol_row1.append((" ", color))
             vol_row2.append((" ", color))
 
-    result.append(f"{'VOL (M)':>12} │ ", style="dim")
+    # Upper Volume Scale
+    result.append(f"{'MAX ' + f'{max_vol/1e6:.1f}M':>12} │ ", style="#81A1C1")
     for char, style in vol_row1:
         result.append(char, style=style)
     result.append("\n")
     
-    result.append(f"{max_vol/1e6:>11.1f}M │ ", style="dim")
+    # Lower Volume Scale with Avg Vol Context
+    result.append(f"{'AVG ' + f'{avg_vol/1e6:.1f}M':>12} │ ", style="dim #81A1C1")
     for char, style in vol_row2:
         result.append(char, style=style)
     result.append("\n")

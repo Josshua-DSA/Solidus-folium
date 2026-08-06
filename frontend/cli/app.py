@@ -182,9 +182,9 @@ class TUIApp:
         
         # 2. Center Panel: System Brand & Mode
         center_text = Text()
-        center_text.append("▲ FOLIUM QUANT DESK ▲\n", style=f"bold {FROST_LIGHT}")
+        center_text.append("▲ FOLIUM QUANT DESK ▲\n", style="bold #88C0D0")
         mode_str = "● LIVE DATABASE ACTIVE" if not self.db_empty else "● SIMULATION / SANDBOX"
-        mode_color = AURORA_GREEN if not self.db_empty else AURORA_YELLOW
+        mode_color = "#A3BE8C" if not self.db_empty else "#D08770"
         center_text.append(mode_str, style=f"bold {mode_color}")
         center_panel = Panel(center_text, border_style=FROST_BLUE, title="SYSTEM NODE", title_align="center")
         

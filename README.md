@@ -56,14 +56,14 @@ Finance-Pro/
 │   └── config.yaml
 │
 ├── context/                          # Documentation & AI Agent Context
-│   ├── ARCHITECTURE.md
-│   ├── DESIGN.md
-│   ├── PRD.md
-│   ├── RULES.md
-│   ├── SCHEMA.md
-│   ├── STRATEGY.md
-│   ├── IMPLEMENTATION.md
-│   └── checkpoint.md
+│   ├── [[ARCHITECTURE]]
+│   ├── [[DESIGN]]
+│   ├── [[PRD]]
+│   ├── [[RULES]]
+│   ├── [[SCHEMA]]
+│   ├── [[STRATEGY]]
+│   ├── [[IMPLEMENTATION]]
+│   └── [[checkpoint]]
 │
 ├── data/                             # Storage murni / DB — BUKAN Python package
 │   ├── ihsg_trading.db

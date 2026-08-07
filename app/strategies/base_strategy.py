@@ -6,7 +6,7 @@ Tier 1: Dapat dikuantifikasi, diizinkan di bot mode.
 Tier 2: Diskresioner, hanya advisory layer di mode manual.
 """
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, Union
 import pandas as pd
 import logging
 
@@ -52,7 +52,7 @@ class BaseStrategy(ABC):
         self,
         prices: pd.DataFrame,
         features: Optional[pd.DataFrame] = None,
-        ml_predictions: Optional[pd.Series] = None,
+        ml_predictions: Optional[Union[pd.Series, pd.DataFrame]] = None,
     ) -> pd.DataFrame:
         """
         Generate trading signals.

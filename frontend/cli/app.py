@@ -112,8 +112,8 @@ class TUIApp:
         self.msg = "Paperium Desk initialized successfully."
         self.msg_color = FROST_TEAL
         
-        # Financial state using Decimals for precision
-        self.capital = Decimal("100000000.00")  # Initial Capital in IDR
+        # Financial state using Decimals for precision (Rp 200M Paper Capital)
+        self.capital = Decimal("200000000.00")  # Initial Capital in IDR
         
         # Simulated Portfolio positions using Decimals
         self.portfolio = [
@@ -122,11 +122,13 @@ class TUIApp:
             {"ticker": "BMRI.JK", "shares": 8000, "avg_price": Decimal("6100.00"), "current_price": Decimal("6400.00"), "sl": Decimal("5900.00"), "tp": Decimal("6600.00")},
         ]
         
-        # Transaction History matching Fincept Ledger details
+        # Transaction History matching Fincept Ledger details (with fees & slippage notes)
         self.transaction_history = [
-            {"date": "2026-05-20", "symbol": "BBCA.JK", "type": "BUY", "qty": Decimal("5000.00"), "price": Decimal("9850.00"), "total": Decimal("49250000.00"), "notes": "Initial Entry - Confidence Score: 85%"},
-            {"date": "2026-05-21", "symbol": "TLKM.JK", "type": "BUY", "qty": Decimal("10000.00"), "price": Decimal("3620.00"), "total": Decimal("36200000.00"), "notes": "Dip Buying - Conf: 70%"},
-            {"date": "2026-05-22", "symbol": "BMRI.JK", "type": "BUY", "qty": Decimal("8000.00"), "price": Decimal("6100.00"), "total": Decimal("48800000.00"), "notes": "Breakout Buy - Conf: 90%"}
+            {"date": "2026-05-20", "symbol": "BBCA.JK", "type": "BUY", "qty": Decimal("5000.00"), "price": Decimal("9850.00"), "total": Decimal("49250000.00"), "notes": "Entry @ Rp 9,650 │ Fee 0.15% (Rp 73.8K) │ Slip 0.05% │ Conf 85%"},
+            {"date": "2026-05-21", "symbol": "TLKM.JK", "type": "BUY", "qty": Decimal("10000.00"), "price": Decimal("3620.00"), "total": Decimal("36200000.00"), "notes": "Dip Buy @ Rp 3,620 │ Fee 0.15% (Rp 54.3K) │ Slip 0.05% │ Conf 70%"},
+            {"date": "2026-05-22", "symbol": "BMRI.JK", "type": "BUY", "qty": Decimal("8000.00"), "price": Decimal("6100.00"), "total": Decimal("48800000.00"), "notes": "Breakout Buy @ Rp 6,100 │ Fee 0.15% (Rp 73.2K) │ Slip 0.05% │ Conf 90%"},
+            {"date": "2026-06-01", "symbol": "ICBP.JK", "type": "SELL", "qty": Decimal("2000.00"), "price": Decimal("8500.00"), "total": Decimal("17000000.00"), "notes": "Take Profit @ Rp 8,500 │ Realized PnL +8.5% │ Fee 0.25%"},
+            {"date": "2026-06-15", "symbol": "ASII.JK", "type": "SELL", "qty": Decimal("5000.00"), "price": Decimal("4950.00"), "total": Decimal("24750000.00"), "notes": "Stop Loss Executed @ Rp 4,950 │ Realized PnL -3.2% │ Fee 0.25%"}
         ]
 
         # Broker Integration & Sandbox API State

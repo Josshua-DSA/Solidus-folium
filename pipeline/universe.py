@@ -916,7 +916,30 @@ LQ45: List[str] = [
     "MYOR.JK", "SIDO.JK", "AMRT.JK", "MNCN.JK", "SRIL.JK",
 ]
 
-KOMPAS100: List[str] = []  # TODO: lengkapi di Fase 2
+KOMPAS100: List[str] = [
+    # LQ45 core
+    "BBCA.JK", "BBRI.JK", "BMRI.JK", "TLKM.JK", "ASII.JK",
+    "BBNI.JK", "UNVR.JK", "ICBP.JK", "INDF.JK", "KLBF.JK",
+    "ADRO.JK", "PTBA.JK", "ITMG.JK", "UNTR.JK", "SMGR.JK",
+    "GGRM.JK", "HMSP.JK", "EXCL.JK", "ISAT.JK", "BRIS.JK",
+    "MDKA.JK", "ANTM.JK", "INCO.JK", "TINS.JK", "AKRA.JK",
+    "PGAS.JK", "MEDC.JK", "BSDE.JK", "PWON.JK", "CTRA.JK",
+    "JPFA.JK", "CPIN.JK", "ERAA.JK", "ACES.JK", "MAPI.JK",
+    "JSMR.JK", "TOWR.JK", "TBIG.JK", "SCMA.JK", "EMTK.JK",
+    "MYOR.JK", "SIDO.JK", "AMRT.JK", "MNCN.JK", "SRIL.JK",
+    # Extended Kompas100
+    "BBTN.JK", "BDMN.JK", "BTPN.JK", "MEGA.JK", "BNGA.JK",
+    "BNLI.JK", "NISP.JK", "BJBR.JK", "BJTM.JK", "SDRA.JK",
+    "BRPT.JK", "TPIA.JK", "INKP.JK", "TKIM.JK", "SMRA.JK",
+    "LPKR.JK", "DILD.JK", "INTP.JK", "WIKA.JK", "PTPP.JK",
+    "AUTO.JK", "SMSM.JK", "GJTL.JK", "LPPF.JK", "RALS.JK",
+    "MLBI.JK", "DLTA.JK", "TSPC.JK", "MERK.JK", "DVLA.JK",
+    "HRUM.JK", "DOID.JK", "BSSR.JK", "MYOH.JK", "MBAP.JK",
+    "ELSA.JK", "ESSA.JK", "INDY.JK", "DSSA.JK", "TOBA.JK",
+    "LINK.JK", "MDIA.JK", "MTEL.JK", "SILO.JK", "MIKA.JK",
+    "GEMS.JK", "MDIY.JK", "PGEO.JK", "BREN.JK", "CUAN.JK",
+    "AMMN.JK", "NCKL.JK", "TAPG.JK", "GOTO.JK", "BUKA.JK",
+]
 
 UNIVERSE_OPTIONS: Dict[str, List[str]] = {
     "idx_all":   IDX_UNIVERSE,

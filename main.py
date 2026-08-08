@@ -1,23 +1,25 @@
 """
-Finance-Pro Quant & Execution Platform — Root Entry Point.
+Finance-Pro Quant & Execution Platform — Root Master Entry Point.
 
-Interactive Interface Selector (9router / sol-fol style):
-  1. Web UI (Launch FastAPI Server & Open Browser)
-  2. Terminal UI (Launch Interactive Rich TUI)
-  3. Exit
+Support 2 Modes:
+  1. Interactive Menu (9router / sol-fol style):
+     $ python main.py
+     
+  2. Direct CLI Commands (delegated to Typer cli.py):
+     $ python main.py fetch --universe lq45
+     $ python main.py backtest --capital 100000000
+     $ python main.py status
+     $ python main.py health
 """
 import os
 import sys
 import webbrowser
 import subprocess
 import time
-from typing import NoReturn
 
 import questionary
 from questionary import Choice, Style
 from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
 
 console = Console()
 
@@ -77,7 +79,14 @@ def launch_terminal_ui():
 
 
 def main():
-    """Main Interactive Selector Loop."""
+    """Main Master Loop: If arguments passed, forward to cli.py; else show Interactive Selector."""
+    if len(sys.argv) > 1:
+        # Forward CLI arguments directly to cli.py (Typer app)
+        from cli import app as cli_app
+        cli_app()
+        return
+
+    # No arguments passed: Show 9router / sol-fol Interactive Selector
     os.system("clear" if os.name != "nt" else "cls")
     print_banner()
 

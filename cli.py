@@ -9,7 +9,7 @@ Usage:
     python cli.py fetch          — Download & simpan data ke SQLite
     python cli.py clean          — Jalankan pipeline DataCleaner
     python cli.py features       — Build fitur teknikal
-    python cli.py backtest       — Jalankan backtest baseline
+    python cli.py backtest       — Jalankan backtest (momentum / ml_signal)
     python cli.py status         — Cek status database & pipeline
     python cli.py health         — Cek konektivitas API eksternal
 """
@@ -120,59 +120,125 @@ def features():
 @app.command()
 def backtest(
     capital: float = typer.Option(100_000_000, help="Initial capital (Rp)"),
+    strategy: str = typer.Option("momentum", help="Strategy: momentum, ml_signal"),
+    fast_window: int = typer.Option(5, help="Momentum fast window"),
+    slow_window: int = typer.Option(20, help="Momentum slow window"),
 ):
-    """Jalankan backtest baseline (equal-weight momentum)."""
-    from model.trainer import get_model_factory
-    from app.backtest.walk_forward import WalkForwardValidator
+    """Jalankan backtest menggunakan BacktestService."""
+    from app.services.backtest_service import BacktestService
+    from app.services.data_service import DataService
 
-    console.print("[bold cyan]Running baseline backtest...[/bold cyan]")
+    console.print(f"[bold cyan]Running backtest: strategy={strategy}[/bold cyan]")
     console.print(f"  Initial capital: Rp{capital:,.0f}")
 
-    # DI: inject model factory ke WalkForwardValidator
-    model_factory = get_model_factory()
-    validator = WalkForwardValidator(model_factory=model_factory)
+    data_service = DataService()
+    if not data_service.is_db_populated():
+        console.print("[yellow]Database kosong. Jalankan 'fetch' terlebih dahulu.[/yellow]")
+        raise typer.Exit(1)
 
-    console.print(f"  Validator: {validator}")
-    console.print("[yellow]⚠ Full backtest engine akan diimplementasi penuh di Fase 5[/yellow]")
+    bs = BacktestService(
+        data_service=data_service,
+        initial_capital=capital,
+    )
+
+    if strategy == "momentum":
+        console.print(f"  Strategy: Momentum (fast={fast_window}, slow={slow_window})")
+        result = bs.run_momentum_backtest(
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    elif strategy == "ml_signal":
+        console.print("  Strategy: ML Signal (requires trained model predictions)")
+        console.print("[yellow]⚠ ML predictions belum tersedia. Gunakan 'momentum'.[/yellow]")
+        raise typer.Exit(1)
+    else:
+        console.print(f"[red]Unknown strategy: {strategy}[/red]")
+        raise typer.Exit(1)
+
+    if "error" in result:
+        console.print(f"[red]✗ {result['error']}[/red]")
+        raise typer.Exit(1)
+
+    # Print results
+    metrics = result.get("metrics", {})
+    console.print("\n[bold green]═══ Backtest Results ═══[/bold green]")
+    console.print(f"  Total Return:    {metrics.get('total_return', 0):.2%}")
+    console.print(f"  CAGR:            {metrics.get('cagr', 0):.2%}")
+    console.print(f"  Sharpe Ratio:    {metrics.get('sharpe_ratio', 0):.2f}")
+    console.print(f"  Sortino Ratio:   {metrics.get('sortino_ratio', 0):.2f}")
+    console.print(f"  Max Drawdown:    {metrics.get('max_drawdown', 0):.2%}")
+    console.print(f"  Calmar Ratio:    {metrics.get('calmar_ratio', 0):.2f}")
+    console.print(f"  J-value:         {metrics.get('j_value', 0):.4f}")
+    console.print(f"  Win Rate:        {metrics.get('win_rate', 0):.2%}")
+    console.print(f"  Profit Factor:   {metrics.get('profit_factor', 0):.2f}")
+    console.print(f"  Total Trades:    {metrics.get('n_trades', 0)}")
+    console.print(f"  Final NAV:       Rp{metrics.get('final_nav', 0):,.0f}")
+    console.print("[green]✓ Backtest selesai[/green]")
 
 
 @app.command()
 def status():
     """Cek status database dan pipeline."""
-    from pipeline.storage import StorageManager
+    from app.services.data_service import DataService
 
     console.print("[bold cyan]System Status[/bold cyan]")
     console.print("=" * 50)
 
     try:
-        storage = StorageManager()
-        tickers = storage.get_available_tickers()
-        date_range = storage.get_date_range()
+        ds = DataService()
+        info = ds.get_db_status()
 
-        console.print(f"  Database:     {storage.db_path}")
-        console.print(f"  Tickers:      {len(tickers)}")
-        console.print(f"  Date range:   {date_range[0]} → {date_range[1]}")
-        console.print(f"  [green]✓ Database OK[/green]")
+        console.print(f"  Database:     {info['db_path']}")
+        console.print(f"  Tickers:      {info['n_tickers']}")
+        console.print(f"  Date range:   {info['date_start']} → {info['date_end']}")
+        console.print(f"  Populated:    {info['is_populated']}")
+        console.print("[green]✓ Database OK[/green]")
     except Exception as e:
         console.print(f"  [red]✗ Database error: {e}[/red]")
 
 
 @app.command()
 def health():
-    """Cek konektivitas API eksternal."""
-    from health.health_checker import HealthChecker
-    from health.health_report import HealthReport
+    """Cek konektivitas API eksternal (yfinance, ccxt)."""
+    import importlib
 
     console.print("[bold cyan]Running health checks...[/bold cyan]")
+    console.print("=" * 50)
 
-    checker = HealthChecker()
-    results = checker.check_all()
-    report = HealthReport()
-    console.print(report.format_report(results))
+    # 1. yfinance
+    try:
+        import yfinance as yf
+        test = yf.Ticker("BBCA.JK")
+        info = test.fast_info
+        console.print(f"  [green]✓ yfinance: OK (BBCA.JK accessible)[/green]")
+    except Exception as e:
+        console.print(f"  [red]✗ yfinance: {e}[/red]")
 
-    if checker.has_critical_failures():
-        console.print("[red]⚠ Critical API failures detected![/red]")
-        raise typer.Exit(1)
+    # 2. SQLite database
+    try:
+        from pipeline.storage import StorageManager
+        sm = StorageManager()
+        tickers = sm.get_available_tickers()
+        console.print(f"  [green]✓ SQLite: OK ({len(tickers)} tickers)[/green]")
+    except Exception as e:
+        console.print(f"  [red]✗ SQLite: {e}[/red]")
+
+    # 3. ccxt (optional)
+    try:
+        importlib.import_module("ccxt")
+        console.print("  [green]✓ ccxt: installed[/green]")
+    except ImportError:
+        console.print("  [yellow]⚠ ccxt: not installed (crypto features disabled)[/yellow]")
+
+    # 4. Key dependencies
+    for pkg in ["numpy", "pandas", "sklearn", "xgboost", "lightgbm"]:
+        try:
+            importlib.import_module(pkg)
+            console.print(f"  [green]✓ {pkg}: OK[/green]")
+        except ImportError:
+            console.print(f"  [red]✗ {pkg}: not installed[/red]")
+
+    console.print("\n[green]✓ Health check selesai[/green]")
 
 
 # ---------------------------------------------------------------------------

@@ -17,6 +17,12 @@ lightgbm>=4.0
 typer>=0.9
 rich>=13.0
 pyyaml>=6.0
+questionary>=2.1
+
+# API & Web
+fastapi>=0.110
+uvicorn>=0.28
+pydantic>=2.0
 
 # Network
 requests>=2.31

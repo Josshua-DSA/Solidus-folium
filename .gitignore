@@ -19,3 +19,4 @@ scipy_pypi.json
 .pytest_cache/
 venv/
 data/ihsg_trading.db
+.cache/

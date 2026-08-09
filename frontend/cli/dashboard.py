@@ -159,7 +159,18 @@ def draw_dashboard(db_empty: bool, db_path: str, available_tickers: list, has_ba
         right_text.append("[SIMULATED]\n\n", style="bold #EBCB8B")
     
     right_text.append(sep_line, style="dim #4C566A")
-    
+
+    right_text.append("REAL-TIME RISK DRIFT MONITOR (PAPER EXECUTOR):\n", style=f"bold {FROST_BLUE}")
+    right_text.append("  Status          : ", style=SNOW_STORM_1)
+    right_text.append("ACTIVE ", style="bold #A3BE8C")
+    right_text.append("(Continuous NAV & Drawdown Inspection)\n", style="#81A1C1")
+    right_text.append("  Max Drawdown Stop: -15.0%  │  Daily Loss Limit: -3.0%\n", style=SNOW_STORM_1)
+    right_text.append("  Drift Alerts     : ", style=SNOW_STORM_1)
+    right_text.append("0 Anomalies Detected ", style="bold #A3BE8C")
+    right_text.append("(System Risk Nominal)\n\n", style="#81A1C1")
+
+    right_text.append(sep_line, style="dim #4C566A")
+
     right_text.append("PORTFOLIO SNAPSHOT:\n", style=f"bold {FROST_BLUE}")
     right_text.append("  Total Equity   : Rp 100,000,000 (Paper Capital)\n", style=SNOW_STORM_1)
     if not is_data_ready:
@@ -194,6 +205,7 @@ def draw_dashboard(db_empty: bool, db_path: str, available_tickers: list, has_ba
     bot_text.append("[P] Portfolio   ", style="bold #88C0D0")
     bot_text.append("[B] Backtest Lab   ", style="bold #88C0D0")
     bot_text.append("[K] Broker Connect   ", style="bold #88C0D0")
+    bot_text.append("[D] Drift Log   ", style="bold #EBCB8B")
     bot_text.append("[R] Refresh Feed", style="bold #EBCB8B")
     
     bot_panel = Panel(

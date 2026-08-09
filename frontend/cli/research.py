@@ -322,6 +322,43 @@ def draw_inspect(ticker: str, db_empty: bool, storage) -> Layout:
     right_text.append("✓ BELOW AVG\n", style="bold #A3BE8C")
     
     right_text.append(f"  52-Wk Range   : Rp {last_price * 0.78:,.0f} ───●── Rp {last_price * 1.22:,.0f}\n", style=SNOW_STORM_2)
+
+    right_text.append(sep_line, style="dim #4C566A")
+
+    # --- INTRADAY HOUR-0 METRICS (Opsi B) ---
+    right_text.append("HOUR-0 INTRADAY METRICS (9-11 AM):\n", style=f"bold {FROST_BLUE}")
+    intraday_available = False
+    if not db_empty and storage:
+        try:
+            intraday_df = storage.load_intraday(ticker_upper, days=10)
+            if not intraday_df.empty:
+                from pipeline.intraday_fetcher import IntradayFetcher
+                fetcher = IntradayFetcher()
+                h0_metrics = fetcher.calculate_hour0_metrics(intraday_df)
+                if not h0_metrics.empty:
+                    intraday_available = True
+                    latest = h0_metrics.sort_values("date").tail(5)
+                    for _, row in latest.iterrows():
+                        date_str = str(row["date"])
+                        spike = row.get("h0_spike_pct", 0) * 100
+                        fade = row.get("h0_fade_pct", 0) * 100
+                        net = row.get("h0_net_pct", 0) * 100
+                        is_high = row.get("h0_spike_is_day_high", 0)
+                        spike_color = "#A3BE8C" if spike > 0 else "#BF616A"
+                        fade_color = "#BF616A" if fade < 0 else "#A3BE8C"
+                        right_text.append(f"  {date_str[:10]} │ ", style=SNOW_STORM_2)
+                        right_text.append(f"Spike:{spike:+.2f}% ", style=f"bold {spike_color}")
+                        right_text.append(f"Fade:{fade:+.2f}% ", style=f"bold {fade_color}")
+                        right_text.append(f"Net:{net:+.2f}%", style=f"bold {SNOW_STORM_1}")
+                        if is_high:
+                            right_text.append(" ★DH", style="bold #EBCB8B")
+                        right_text.append("\n")
+        except Exception:
+            pass
+
+    if not intraday_available:
+        right_text.append("  [!] No intraday data — fetch via [F] Intraday Fetch\n", style="bold #EBCB8B")
+        right_text.append("      or run: IntradayFetcher → StorageManager\n", style="#81A1C1")
     
     right_panel = Panel(
         right_text,

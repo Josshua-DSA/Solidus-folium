@@ -92,6 +92,9 @@ class BacktestService:
             "position_size_pct": position_size_pct,
         }
 
+        # Export HTML and Markdown reports automatically
+        self._export_reports(result)
+
         return result
 
     def run_ml_backtest(
@@ -138,6 +141,9 @@ class BacktestService:
             "sell_threshold": sell_threshold,
         }
 
+        # Export HTML and Markdown reports automatically
+        self._export_reports(result)
+
         return result
 
     def run_benchmark_comparison(
@@ -167,6 +173,30 @@ class BacktestService:
             logger.warning("Could not load benchmark %s: %s", benchmark_ticker, e)
 
         return {}
+
+    def _export_reports(self, result: Dict[str, Any]) -> None:
+        """
+        Internal helper: Ekspor otomatis laporan HTML & Markdown.
+        """
+        from datetime import datetime
+        from pathlib import Path
+        from app.backtest.report import render_html, render_markdown
+
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        strategy_name = result.get("strategy", "backtest")
+        out_dir = Path("outputs/backtest_results")
+
+        html_file = out_dir / f"{strategy_name}_{timestamp_str}.html"
+        md_file = out_dir / f"{strategy_name}_{timestamp_str}.md"
+
+        try:
+            render_html(result, html_file)
+            render_markdown(result, output_path=md_file)
+            result["report_html_path"] = str(html_file)
+            result["report_md_path"] = str(md_file)
+            logger.info("Reports saved: %s, %s", html_file, md_file)
+        except Exception as e:
+            logger.warning("Failed to export reports: %s", e)
 
     def __repr__(self) -> str:
         return (

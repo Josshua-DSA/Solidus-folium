@@ -37,7 +37,7 @@ class StorageManager:
     # ------------------------------------------------------------------
 
     def _init_db(self) -> None:
-        """Buat tabel prices dan fundamentals jika belum ada."""
+        """Buat tabel prices, fundamentals, dan intraday_ohlcv jika belum ada."""
         with self._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS prices (
@@ -64,6 +64,23 @@ class StorageManager:
                     market_cap     REAL,
                     last_updated   TEXT
                 )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS intraday_ohlcv (
+                    timestamp  TEXT    NOT NULL,
+                    ticker     TEXT    NOT NULL,
+                    open       REAL,
+                    high       REAL,
+                    low        REAL,
+                    close      REAL,
+                    volume     INTEGER,
+                    PRIMARY KEY (timestamp, ticker)
+                )
+            """)
+            # Index untuk query intraday cepat per-ticker
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_intraday_ticker
+                ON intraday_ohlcv (ticker, timestamp)
             """)
             conn.commit()
 
@@ -244,6 +261,146 @@ class StorageManager:
         with self._connect() as conn:
             df = pd.read_sql_query("SELECT * FROM fundamentals", conn)
         return df
+
+    # ------------------------------------------------------------------
+    # Intraday operations
+    # ------------------------------------------------------------------
+
+    def save_intraday(self, ticker: str, df: pd.DataFrame) -> None:
+        """
+        Simpan DataFrame intraday OHLCV ke database (upsert).
+
+        Args:
+            ticker: Ticker saham (e.g. 'BBCA.JK')
+            df: DataFrame dengan kolom timestamp/date, open, high, low, close, volume
+        """
+        data = df.copy()
+
+        # Normalise timestamp column
+        if "timestamp" not in data.columns:
+            if "date" in data.columns:
+                data = data.rename(columns={"date": "timestamp"})
+            elif data.index.name in ("timestamp", "date", "Datetime"):
+                data = data.reset_index()
+                if "Datetime" in data.columns:
+                    data = data.rename(columns={"Datetime": "timestamp"})
+                elif "date" in data.columns:
+                    data = data.rename(columns={"date": "timestamp"})
+            else:
+                raise ValueError(
+                    "DataFrame harus memiliki kolom 'timestamp' atau 'date'"
+                )
+
+        data["timestamp"] = pd.to_datetime(data["timestamp"]).dt.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+        data["ticker"] = ticker
+
+        required_cols = ["open", "high", "low", "close", "volume"]
+        for col in required_cols:
+            if col not in data.columns:
+                raise ValueError(f"Kolom wajib '{col}' tidak ditemukan")
+
+        with self._connect() as conn:
+            rows = [
+                (
+                    row["timestamp"],
+                    row["ticker"],
+                    float(row["open"]),
+                    float(row["high"]),
+                    float(row["low"]),
+                    float(row["close"]),
+                    int(row["volume"]),
+                )
+                for _, row in data.iterrows()
+            ]
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO intraday_ohlcv
+                (timestamp, ticker, open, high, low, close, volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                rows,
+            )
+            conn.commit()
+
+        logger.info("Saved %d intraday rows for %s", len(rows), ticker)
+
+    def load_intraday(
+        self,
+        ticker: str,
+        days: int = 5,
+    ) -> pd.DataFrame:
+        """
+        Load data intraday untuk satu ticker (N hari terakhir).
+
+        Args:
+            ticker: Ticker saham
+            days: Jumlah hari terakhir (default 5)
+
+        Returns:
+            DataFrame dengan kolom timestamp, ticker, open, high, low, close, volume
+        """
+        import datetime as _dt
+
+        cutoff = (_dt.datetime.now() - _dt.timedelta(days=days)).strftime(
+            "%Y-%m-%d 00:00:00"
+        )
+        with self._connect() as conn:
+            df = pd.read_sql_query(
+                """
+                SELECT * FROM intraday_ohlcv
+                WHERE ticker = ? AND timestamp >= ?
+                ORDER BY timestamp
+                """,
+                conn,
+                params=[ticker, cutoff],
+            )
+
+        if not df.empty:
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+        return df
+
+    def load_intraday_all_tickers(
+        self,
+        days: int = 5,
+    ) -> pd.DataFrame:
+        """
+        Load data intraday untuk semua ticker (N hari terakhir).
+
+        Args:
+            days: Jumlah hari terakhir (default 5)
+
+        Returns:
+            DataFrame long format
+        """
+        import datetime as _dt
+
+        cutoff = (_dt.datetime.now() - _dt.timedelta(days=days)).strftime(
+            "%Y-%m-%d 00:00:00"
+        )
+        with self._connect() as conn:
+            df = pd.read_sql_query(
+                """
+                SELECT * FROM intraday_ohlcv
+                WHERE timestamp >= ?
+                ORDER BY ticker, timestamp
+                """,
+                conn,
+                params=[cutoff],
+            )
+
+        if not df.empty:
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+        return df
+
+    def get_intraday_tickers(self) -> List[str]:
+        """Return list ticker yang memiliki data intraday."""
+        with self._connect() as conn:
+            result = conn.execute(
+                "SELECT DISTINCT ticker FROM intraday_ohlcv ORDER BY ticker"
+            ).fetchall()
+        return [row[0] for row in result]
 
     def __repr__(self) -> str:
         tickers = self.get_available_tickers()

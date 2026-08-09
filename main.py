@@ -100,7 +100,6 @@ def main():
         "Choose Interface:",
         choices=choices,
         style=NORD_STYLE,
-        use_pointer=True,
     ).ask()
 
     if answer == "web":

@@ -6,6 +6,7 @@ from app.backtest.backtester import Backtester
 from app.backtest.walk_forward import WalkForwardValidator
 from app.backtest.transaction_cost import TransactionCostModel
 from app.backtest.benchmark_runner import BenchmarkRunner
+from app.backtest.report import render_html, render_markdown, render_walkforward_html
 from app.backtest.metrics import (
     calculate_all_metrics,
     calculate_sharpe_ratio,
@@ -24,6 +25,9 @@ __all__ = [
     "WalkForwardValidator",
     "TransactionCostModel",
     "BenchmarkRunner",
+    "render_html",
+    "render_markdown",
+    "render_walkforward_html",
     "calculate_all_metrics",
     "calculate_sharpe_ratio",
     "calculate_sortino_ratio",

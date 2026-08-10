@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Service 1: Terminal UI (Interactive CLI - Nord TUI)
+  # Usage: docker compose run --rm tui
+  # ---------------------------------------------------------------------------
+  tui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finance_pro_tui
+    stdin_open: true
+    tty: true
+    environment:
+      - TERM=xterm-256color
+      - COLORTERM=truecolor
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./config:/app/config
+    command: python main.py
+
+  # ---------------------------------------------------------------------------
+  # Service 2: Web API (FastAPI REST & WebSocket Server)
+  # Usage: docker compose up -d web-api
+  # URL: http://localhost:8000/docs
+  # ---------------------------------------------------------------------------
+  web-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finance_pro_api
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+      - ./config:/app/config
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Service 3: Test Runner (Automated Pytest Suite)
+  # Usage: docker compose run --rm test
+  # ---------------------------------------------------------------------------
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finance_pro_test
+    volumes:
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+    command: pytest tests/ -v --tb=short
+
+networks:
+  default:
+    name: finance_pro_net

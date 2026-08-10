@@ -1,0 +1,37 @@
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE & Editor settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git & Local Hermes Agent
+.git/
+.gitignore
+.cache/
+
+# Local database & temp outputs (will be volume mounted)
+data/*.db
+outputs/logs/*.log
+outputs/backtest_results/*
+!outputs/backtest_results/.gitkeep
+!data/.gitkeep
+
+# Graphify & build artifacts
+graphify-out/
+*.egg-info/
+dist/
+build/

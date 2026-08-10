@@ -69,8 +69,96 @@ def fetch(
 
 
 @app.command()
-def clean():
-    """Jalankan pipeline DataCleaner pada data di database."""
+def train(
+    model_type: str = typer.Option("xgboost", help="Model type: xgboost, lightgbm, ensemble, autoencoder"),
+    use_optuna: bool = typer.Option(False, help="Gunakan Optuna untuk hyperparameter tuning"),
+    n_trials: int = typer.Option(20, help="Jumlah trial Optuna jika use_optuna=True"),
+):
+    """Latih model Machine Learning (Fase 3) dari data di database."""
+    from pipeline.storage import StorageManager
+    from pipeline.data_cleaner import DataCleaner
+    from shared.features.feature_builder import FeatureBuilder
+    from model.trainer import ModelTrainer, TrainingConfig
+    import numpy as np
+    import pandas as pd
+
+    console.print(f"[bold cyan]Running Model Training: model_type={model_type}...[/bold cyan]")
+
+    storage = StorageManager()
+    if not storage.get_available_tickers():
+        console.print("[yellow]Database kosong. Jalankan 'fetch' terlebih dahulu.[/yellow]")
+        raise typer.Exit(1)
+
+    cleaner = DataCleaner()
+    fb = FeatureBuilder()
+
+    close_prices = storage.load_close_prices()
+    cleaned = cleaner.clean(close_prices)
+
+    console.print("  → Building technical features & labels...")
+    features_dict = fb.build_features(cleaned)
+
+    # Combined dataset setup (multi-feature matrix per ticker)
+    feature_matrices = []
+    labels_list = []
+    
+    ret = cleaned.pct_change().shift(-1)
+    
+    for ticker in cleaned.columns:
+        ohlc = pd.DataFrame({
+            "open": cleaned[ticker],
+            "high": cleaned[ticker] * 1.002,
+            "low": cleaned[ticker] * 0.998,
+            "close": cleaned[ticker],
+            "volume": 1000000
+        })
+        tf = fb.build_technical_features(ohlc).dropna()
+        lbl = np.where(ret[ticker].loc[tf.index] > 0.005, 1, np.where(ret[ticker].loc[tf.index] < -0.005, -1, 0))
+        
+        feature_matrices.append(tf.values)
+        labels_list.append(lbl)
+        
+    X = np.vstack(feature_matrices)
+    y = np.concatenate(labels_list)
+    
+    # Alignment map for labels (-1, 0, 1) -> (0, 1, 2)
+    if -1 in y:
+        y = y + 1
+        
+    feat_names = list(fb.build_technical_features(pd.DataFrame({
+        "open": cleaned.iloc[:, 0], "high": cleaned.iloc[:, 0], "low": cleaned.iloc[:, 0], "close": cleaned.iloc[:, 0], "volume": 1000000
+    })).dropna().columns)
+
+    console.print(f"  → Prepared dataset: X={X.shape}, y={y.shape}")
+
+    # Sample last 10,000 rows for fast training
+    X = X[-10000:]
+    y = y[-10000:]
+
+    config = TrainingConfig(
+        model_type=model_type,
+        use_optuna=use_optuna,
+        optuna_n_trials=n_trials,
+        train_size=3000,
+        test_size=1000,
+        step=3000,
+        max_folds=2,
+    )
+    trainer = ModelTrainer(config=config)
+
+    console.print("  → Starting Walk-Forward Validation & Training...")
+    results = trainer.train(X, y, feature_names=feat_names)
+
+    console.print("\n[bold green]═══ Training Completed ═══[/bold green]")
+    metrics = results.get("aggregate_metrics", {})
+    for k, v in metrics.items():
+        if isinstance(v, float):
+            console.print(f"  {k:<20}: {v:.4f}")
+        else:
+            console.print(f"  {k:<20}: {v}")
+
+    console.print(f"  Artifacts saved to: {config.artifact_dir}")
+    console.print("[green]✓ Training model selesai[/green]")
     from pipeline.storage import StorageManager
     from pipeline.data_cleaner import DataCleaner
 

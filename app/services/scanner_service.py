@@ -48,6 +48,32 @@ class ScannerService:
             sell_threshold=buy_threshold - 0.15,
         )
         self.combiner = SignalCombiner(buy_threshold=buy_threshold)
+        self._loaded_model = None
+        self._load_latest_model()
+
+    def _load_latest_model(self) -> None:
+        """Load artifact model ML terbaru dari artifacts/saved_models/ jika ada."""
+        import os
+        import glob
+        from model.xgboost_trainer import XGBoostTrainer
+
+        model_dir = "artifacts/saved_models"
+        if not os.path.exists(model_dir):
+            return
+
+        files = glob.glob(os.path.join(model_dir, "*.pkl"))
+        if not files:
+            return
+
+        # Sort by modification time descending
+        files.sort(key=os.path.getmtime, reverse=True)
+        latest_file = files[0]
+        try:
+            trainer = XGBoostTrainer()
+            self._loaded_model = trainer.load(latest_file)
+            logger.info("ScannerService successfully auto-loaded model artifact: %s", latest_file)
+        except Exception as e:
+            logger.warning("Failed to auto-load model artifact %s: %s", latest_file, e)
 
     def scan_momentum(
         self,
@@ -155,16 +181,34 @@ class ScannerService:
     ) -> List[Dict[str, Any]]:
         """
         Scan gabungan momentum + ML (jika tersedia).
-
-        Args:
-            ml_predictions: Optional ML predictions
-            tickers: Filter ticker
-            momentum_weight: Bobot skor momentum (default 40%)
-            ml_weight: Bobot skor ML (default 60%)
-
-        Returns:
-            List of combined signal dicts
+        Jika ml_predictions None tapi _loaded_model ada, generate ML predictions otomatis.
         """
+        if ml_predictions is None and self._loaded_model is not None:
+            try:
+                from shared.features.feature_builder import FeatureBuilder
+                close_prices = self.data_service.get_close_prices(tickers)
+                if not close_prices.empty:
+                    fb = FeatureBuilder()
+                    ml_preds_dict = {}
+                    for t in close_prices.columns:
+                        ohlc = pd.DataFrame({
+                            "open": close_prices[t],
+                            "high": close_prices[t] * 1.002,
+                            "low": close_prices[t] * 0.998,
+                            "close": close_prices[t],
+                            "volume": 1000000
+                        })
+                        tf = fb.build_technical_features(ohlc).dropna()
+                        if not tf.empty:
+                            probas = self._loaded_model.predict_proba(tf.values[-1:])
+                            # proba PROFIT index 2 or 1
+                            p_profit = probas[0][-1] if probas.shape[1] > 1 else probas[0][0]
+                            ml_preds_dict[t] = p_profit
+                    if ml_preds_dict:
+                        ml_predictions = pd.DataFrame([ml_preds_dict], index=[close_prices.index[-1]])
+            except Exception as e:
+                logger.warning("Auto inference failed: %s", e)
+
         mom_results = self.scan_momentum(tickers)
 
         if ml_predictions is not None and not ml_predictions.empty:

@@ -52,11 +52,29 @@ class ScannerService:
         self._load_latest_model()
 
     def _load_latest_model(self) -> None:
-        """Load artifact model ML terbaru dari artifacts/saved_models/ jika ada."""
+        """Load model ML dari ModelRegistry (production → latest → glob fallback)."""
         import os
         import glob
-        from model.xgboost_trainer import XGBoostTrainer
 
+        # Strategy 1: Load dari ModelRegistry (production model prioritas)
+        try:
+            from model.registry import ModelRegistry
+            registry = ModelRegistry()
+            data = registry.load_model(model_type="xgboost")
+            if data is not None and "model" in data:
+                from model.xgboost_trainer import XGBoostTrainer
+                trainer = XGBoostTrainer()
+                trainer.model = data["model"]
+                trainer.config = data.get("config", trainer.config)
+                trainer.feature_names = data.get("feature_names")
+                trainer.best_params = data.get("best_params")
+                self._loaded_model = trainer
+                logger.info("ScannerService loaded model from ModelRegistry (production/latest)")
+                return
+        except Exception as e:
+            logger.debug("ModelRegistry load failed, falling back to glob: %s", e)
+
+        # Strategy 2: Fallback ke glob artifacts/saved_models/*.pkl
         model_dir = "artifacts/saved_models"
         if not os.path.exists(model_dir):
             return
@@ -65,15 +83,15 @@ class ScannerService:
         if not files:
             return
 
-        # Sort by modification time descending
         files.sort(key=os.path.getmtime, reverse=True)
         latest_file = files[0]
         try:
+            from model.xgboost_trainer import XGBoostTrainer
             trainer = XGBoostTrainer()
             self._loaded_model = trainer.load(latest_file)
-            logger.info("ScannerService successfully auto-loaded model artifact: %s", latest_file)
+            logger.info("ScannerService loaded model from glob fallback: %s", latest_file)
         except Exception as e:
-            logger.warning("Failed to auto-load model artifact %s: %s", latest_file, e)
+            logger.warning("Failed to load model artifact %s: %s", latest_file, e)
 
     def scan_momentum(
         self,

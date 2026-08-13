@@ -148,6 +148,23 @@ class ModelRegistry:
                 json.dumps(mv.metrics), json.dumps(mv.config), json.dumps(mv.tags),
             ))
 
+        # MLflow Dual-Logging Sync
+        try:
+            import mlflow
+            mlflow.set_experiment(f"Finance-Pro_{model_type}")
+            with mlflow.start_run(run_name=version_id):
+                mlflow.log_param("version_id", version_id)
+                mlflow.log_param("stage", stage)
+                mlflow.log_param("artifact_path", str(artifact_path))
+                if config:
+                    mlflow.log_params({k: str(v) for k, v in config.items()})
+                if metrics:
+                    for k, v in metrics.items():
+                        if isinstance(v, (int, float)):
+                            mlflow.log_metric(k, float(v))
+        except Exception as e:
+            logger.debug("MLflow sync skipped: %s", e)
+
         logger.info("Registered model %s (stage=%s, accuracy=%.4f)",
                      version_id, stage, metrics.get("accuracy", 0))
         return mv

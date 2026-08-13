@@ -85,7 +85,10 @@ class StorageManager:
             conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30.0)
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        return conn
 
     @staticmethod
     def _compute_log_returns(close_values: np.ndarray) -> np.ndarray:

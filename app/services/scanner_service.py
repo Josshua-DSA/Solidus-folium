@@ -49,6 +49,7 @@ class ScannerService:
         )
         self.combiner = SignalCombiner(buy_threshold=buy_threshold)
         self._loaded_model = None
+        self._feature_cache = {}  # (ticker, last_date) -> P(PROFIT)
         self._load_latest_model()
 
     def _load_latest_model(self) -> None:
@@ -209,6 +210,15 @@ class ScannerService:
                     fb = FeatureBuilder()
                     ml_preds_dict = {}
                     for t in close_prices.columns:
+                        close_t = close_prices[t].dropna()
+                        if close_t.empty:
+                            continue
+                        
+                        cache_key = (t, str(close_t.index[-1]))
+                        if cache_key in self._feature_cache:
+                            ml_preds_dict[t] = self._feature_cache[cache_key]
+                            continue
+
                         ohlc = pd.DataFrame({
                             "open": close_prices[t],
                             "high": close_prices[t] * 1.002,
@@ -222,6 +232,7 @@ class ScannerService:
                             # proba PROFIT index 2 or 1
                             p_profit = probas[0][-1] if probas.shape[1] > 1 else probas[0][0]
                             ml_preds_dict[t] = p_profit
+                            self._feature_cache[cache_key] = p_profit
                     if ml_preds_dict:
                         ml_predictions = pd.DataFrame([ml_preds_dict], index=[close_prices.index[-1]])
             except Exception as e:

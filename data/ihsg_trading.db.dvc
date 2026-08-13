@@ -1,0 +1,5 @@
+outs:
+- md5: 8ead01faf764ff4e006a91d805228511
+  size: 12394496
+  hash: md5
+  path: ihsg_trading.db

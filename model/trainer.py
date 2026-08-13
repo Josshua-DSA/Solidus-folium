@@ -177,6 +177,26 @@ class ModelTrainer:
 
         logger.info("Metadata saved to %s", meta_path)
 
+        # Auto-register ke ModelRegistry
+        try:
+            from model.registry import ModelRegistry
+            registry = ModelRegistry(artifacts_dir=self.config.artifact_dir)
+            registry.register(
+                model_type=self.config.model_type,
+                artifact_path=model_path,
+                metrics=self.results.aggregate_metrics if self.results else {},
+                config={
+                    "train_size": self.config.train_size,
+                    "test_size": self.config.test_size,
+                    "walk_forward_mode": self.config.walk_forward_mode,
+                    "use_optuna": self.config.use_optuna,
+                },
+                description=f"Auto-registered from ModelTrainer ({timestamp})",
+            )
+            logger.info("Model auto-registered to ModelRegistry as %s", self.config.model_type)
+        except Exception as e:
+            logger.warning("Failed to auto-register model to registry: %s", e)
+
     def evaluate(
         self,
         X_test: np.ndarray,

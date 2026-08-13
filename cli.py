@@ -14,6 +14,7 @@ Usage:
     python cli.py health         — Cek konektivitas API eksternal
 """
 import typer
+from typing import Optional
 from rich.console import Console
 
 console = Console()
@@ -327,6 +328,95 @@ def health():
             console.print(f"  [red]✗ {pkg}: not installed[/red]")
 
     console.print("\n[green]✓ Health check selesai[/green]")
+
+
+@app.command()
+def models(
+    action: str = typer.Argument("list", help="Action: list, compare, promote, archive"),
+    version_id: Optional[str] = typer.Argument(None, help="Version ID (untuk promote/archive)"),
+    model_type: Optional[str] = typer.Option(None, help="Filter berdasarkan tipe model"),
+):
+    """Kelola Model Registry: list, compare, promote, archive model ML."""
+    from model.registry import ModelRegistry
+
+    registry = ModelRegistry()
+
+    if action == "list":
+        versions = registry.list_versions(model_type=model_type)
+        if not versions:
+            console.print("[yellow]Belum ada model terdaftar di registry.[/yellow]")
+            return
+
+        from rich.table import Table
+        table = Table(title="📦 Model Registry", border_style="#88C0D0", show_lines=True)
+        table.add_column("Version ID", style="bold #88C0D0")
+        table.add_column("Type", style="#81A1C1")
+        table.add_column("Stage", style="bold")
+        table.add_column("Accuracy", justify="right")
+        table.add_column("F1 Macro", justify="right")
+        table.add_column("AUC OVR", justify="right")
+        table.add_column("Created At", style="dim")
+
+        for mv in versions:
+            stage_style = {"production": "[bold green]🟢 PRODUCTION[/bold green]",
+                           "staging": "[yellow]🟡 STAGING[/yellow]",
+                           "archived": "[dim]⚪ ARCHIVED[/dim]"}.get(mv.stage, mv.stage)
+            table.add_row(
+                mv.version_id,
+                mv.model_type,
+                stage_style,
+                f"{mv.metrics.get('accuracy', 0):.4f}",
+                f"{mv.metrics.get('f1_macro', 0):.4f}",
+                f"{mv.metrics.get('auc_ovr', 0):.4f}",
+                mv.created_at,
+            )
+        console.print(table)
+
+    elif action == "compare":
+        rows = registry.compare(model_type=model_type)
+        if not rows:
+            console.print("[yellow]Belum ada model untuk dibandingkan.[/yellow]")
+            return
+
+        from rich.table import Table
+        table = Table(title="📊 Model Comparison (Sorted by F1-Macro)", border_style="#88C0D0", show_lines=True)
+        table.add_column("#", style="bold", justify="right")
+        table.add_column("Version ID", style="bold #88C0D0")
+        table.add_column("Stage")
+        table.add_column("Accuracy", justify="right")
+        table.add_column("F1 Macro", justify="right", style="bold #A3BE8C")
+        table.add_column("AUC OVR", justify="right")
+        table.add_column("Log Loss", justify="right")
+
+        for i, r in enumerate(rows, 1):
+            stage_icon = {"production": "🟢", "staging": "🟡", "archived": "⚪"}.get(r["stage"], "")
+            table.add_row(
+                str(i),
+                r["version_id"],
+                f"{stage_icon} {r['stage']}",
+                f"{r['accuracy']:.4f}",
+                f"{r['f1_macro']:.4f}",
+                f"{r['auc_ovr']:.4f}",
+                f"{r['log_loss']:.4f}",
+            )
+        console.print(table)
+
+    elif action == "promote":
+        if not version_id:
+            console.print("[red]Berikan version_id untuk di-promote. Contoh: python main.py models promote xgboost_v001[/red]")
+            raise typer.Exit(1)
+        mv = registry.promote(version_id)
+        console.print(f"[bold green]✓ {mv.version_id} dipromosikan ke PRODUCTION[/bold green]")
+
+    elif action == "archive":
+        if not version_id:
+            console.print("[red]Berikan version_id untuk di-archive.[/red]")
+            raise typer.Exit(1)
+        registry.archive(version_id)
+        console.print(f"[bold yellow]✓ {version_id} di-archive[/bold yellow]")
+
+    else:
+        console.print(f"[red]Unknown action: {action}. Gunakan: list, compare, promote, archive[/red]")
 
 
 # ---------------------------------------------------------------------------

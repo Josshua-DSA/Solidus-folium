@@ -72,6 +72,16 @@ class TUIApp:
         self.comm_pct = float(exec_conf.get("commission_pct", 0.0015))
         self.slip_pct = float(exec_conf.get("slippage_pct", 0.0005))
 
+        # Background Scheduler Instance
+        self.scheduler = None
+        try:
+            from pipeline.scheduler import DataScheduler, SchedulerConfig
+            self.scheduler = DataScheduler(
+                config=SchedulerConfig(universe="lq45", respect_trading_hours=True)
+            )
+        except Exception:
+            pass
+
         # Initialize RiskManager and ExecutionEngine if backend is available
         self.risk_manager = None
         self.execution_engine = None
@@ -508,6 +518,20 @@ class TUIApp:
                     self.active_screen = "broker"
                     self.msg = "Broker Connection panel loaded."
                     self.msg_color = FROST_TEAL
+                    state_changed = True
+                elif key_lower == 'b':
+                    if self.scheduler:
+                        if self.scheduler.is_running():
+                            self.scheduler.stop()
+                            self.msg = "Background Data Scheduler [B] STOPPED 🔴"
+                            self.msg_color = AURORA_RED
+                        else:
+                            self.scheduler.start_background()
+                            self.msg = "Background Data Scheduler [B] STARTED 🟢 (Auto-Sync active)"
+                            self.msg_color = AURORA_GREEN
+                    else:
+                        self.msg = "Scheduler module not available"
+                        self.msg_color = AURORA_RED
                     state_changed = True
                 elif key in ("1", "2", "3", "4") and self.active_screen == "dashboard":
                     if key == "1":

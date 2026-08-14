@@ -78,6 +78,13 @@ def launch_terminal_ui():
         subprocess.run([sys.executable, cli_script, "status"])
 
 
+def launch_scheduler():
+    """Jalankan Background Data Scheduler via CLI."""
+    console.print("\n[bold #88c0d0]📡 Memulai Background Data Scheduler...[/bold #88c0d0]\n")
+    cli_script = os.path.join("cli.py")
+    subprocess.run([sys.executable, cli_script, "scheduler", "start"])
+
+
 def main():
     """Main Master Loop: If arguments passed, forward to cli.py; else show Interactive Selector."""
     if len(sys.argv) > 1:
@@ -93,6 +100,7 @@ def main():
     choices = [
         Choice(title="★ Web UI (Open in Browser & Run API)", value="web"),
         Choice(title="☆ Terminal UI (Interactive CLI)", value="tui"),
+        Choice(title="☆ Background Data Scheduler (Auto-Sync IDX)", value="scheduler"),
         Choice(title="☆ Exit", value="exit"),
     ]
 
@@ -106,6 +114,8 @@ def main():
         launch_web_ui()
     elif answer == "tui":
         launch_terminal_ui()
+    elif answer == "scheduler":
+        launch_scheduler()
     elif answer == "exit":
         console.print("[bold #d8dee9]Sampai jumpa! 👋[/bold #d8dee9]")
         sys.exit(0)

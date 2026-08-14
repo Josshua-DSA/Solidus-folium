@@ -419,6 +419,95 @@ def models(
         console.print(f"[red]Unknown action: {action}. Gunakan: list, compare, promote, archive[/red]")
 
 
+@app.command()
+def scheduler(
+    action: str = typer.Argument("status", help="Action: start, stop, status, once"),
+    universe: str = typer.Option("lq45", help="Universe ticker"),
+    daily_interval: int = typer.Option(60, help="Daily fetch interval (menit)"),
+    intraday_interval: int = typer.Option(15, help="Intraday fetch interval (menit)"),
+    force: bool = typer.Option(False, help="Paksa eksekusi (abaikan jam bursa)"),
+):
+    """
+    Background Data Scheduler — sinkronisasi data otomatis saat jam bursa IDX.
+
+    Actions:
+        status  — Tampilkan status scheduler & jam bursa.
+        start   — Jalankan scheduler di background thread.
+        once    — Jalankan satu siklus fetch + clean (sinkron).
+    """
+    from pipeline.scheduler import DataScheduler, SchedulerConfig
+    from rich.table import Table
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    WIB = ZoneInfo("Asia/Jakarta")
+    now = datetime.now(WIB)
+
+    config = SchedulerConfig(
+        universe=universe,
+        daily_fetch_interval_minutes=daily_interval,
+        intraday_interval_minutes=intraday_interval,
+    )
+
+    def on_event(event):
+        icon = "✓" if event.status == "completed" else "⚠" if event.status == "failed" else "→"
+        console.print(f"  [{event.timestamp}] {icon} {event.task}: {event.message}")
+
+    sched = DataScheduler(config=config, on_event=on_event)
+
+    if action == "status":
+        is_trading = sched._is_trading_hours(now)
+        next_open = sched.next_trading_window(now)
+
+        table = Table(title="📡 Data Scheduler Status", border_style="cyan")
+        table.add_column("Parameter", style="bold")
+        table.add_column("Value", style="green")
+
+        table.add_row("Waktu Sekarang (WIB)", now.strftime("%A, %d %B %Y %H:%M:%S"))
+        table.add_row("Jam Bursa IDX", "🟢 AKTIF (09:00-16:00)" if is_trading else "🔴 TUTUP")
+        table.add_row("Sesi Bursa Berikutnya", next_open.strftime("%A %d %b %H:%M WIB") if not is_trading else "Sedang berjalan")
+        table.add_row("Universe", config.universe.upper())
+        table.add_row("Daily Fetch Interval", f"{config.daily_fetch_interval_minutes} menit")
+        table.add_row("Intraday Fetch Interval", f"{config.intraday_interval_minutes} menit")
+        table.add_row("Auto-Clean", "✓ Enabled" if config.auto_clean else "✗ Disabled")
+
+        console.print(table)
+
+    elif action == "once":
+        console.print("[bold cyan]🔄 Menjalankan satu siklus fetch + clean...[/bold cyan]")
+        results = sched.run_once(force=force)
+
+        if results.get("skipped"):
+            console.print(f"[yellow]⏸ Skipped: {results['reason']}[/yellow]")
+            console.print("[dim]Gunakan --force untuk paksa eksekusi di luar jam bursa.[/dim]")
+        else:
+            for task_result in results.get("tasks", []):
+                status_icon = "✓" if task_result["status"] == "completed" else "✗"
+                console.print(f"  {status_icon} {task_result['task']}: {task_result['status']}")
+            console.print("[green]✓ Siklus scheduler selesai.[/green]")
+
+    elif action == "start":
+        console.print("[bold cyan]🚀 Starting Background Data Scheduler...[/bold cyan]")
+        console.print(f"  Universe     : {config.universe.upper()}")
+        console.print(f"  Daily Fetch  : setiap {config.daily_fetch_interval_minutes} menit")
+        console.print(f"  Intraday     : setiap {config.intraday_interval_minutes} menit")
+        console.print(f"  Auto-Clean   : {'✓' if config.auto_clean else '✗'}")
+        console.print("\n[dim]Tekan Ctrl+C untuk menghentikan scheduler.[/dim]\n")
+
+        sched.start_background()
+
+        try:
+            while sched.is_running():
+                import time
+                time.sleep(1)
+        except KeyboardInterrupt:
+            sched.stop()
+            console.print("\n[yellow]Scheduler dihentikan oleh user.[/yellow]")
+
+    else:
+        console.print(f"[red]Unknown action: {action}. Gunakan: status, start, once[/red]")
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------

@@ -203,8 +203,9 @@ def draw_dashboard(db_empty: bool, db_path: str, available_tickers: list, has_ba
     bot_text.append("[I] Inspect Stock   ", style="bold #88C0D0")
     bot_text.append("[S] Scanner   ", style="bold #88C0D0")
     bot_text.append("[P] Portfolio   ", style="bold #88C0D0")
-    bot_text.append("[B] Backtest Lab   ", style="bold #88C0D0")
+    bot_text.append("[T] Backtest Lab   ", style="bold #88C0D0")
     bot_text.append("[K] Broker Connect   ", style="bold #88C0D0")
+    bot_text.append("[B] Sync Scheduler   ", style="bold #A3BE8C")
     bot_text.append("[D] Drift Log   ", style="bold #EBCB8B")
     bot_text.append("[R] Refresh Feed", style="bold #EBCB8B")
     

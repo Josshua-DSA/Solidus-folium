@@ -94,3 +94,20 @@ execution:
 logging:
   level: "INFO"
   file: "outputs/logs/quant.log"
+
+# ---------------------------------------------------------------------------
+# Background Data Scheduler
+# ---------------------------------------------------------------------------
+scheduler:
+  daily_fetch_interval_minutes: 60
+  intraday_interval_minutes: 15
+  auto_clean: true
+  respect_trading_hours: true
+  max_retries: 3
+  retry_delay_seconds: 30
+
+# ---------------------------------------------------------------------------
+# Compute Engine
+# ---------------------------------------------------------------------------
+compute:
+  use_polars: false       # Set true untuk aktifkan Polars accelerated features

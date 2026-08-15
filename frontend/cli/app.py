@@ -12,8 +12,10 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 try:
-    from data_layer.storage import StorageManager
-    from data_layer.universe import LQ45, IDX_UNIVERSE
+    from pipeline.storage import StorageManager
+    from pipeline.universe import UniverseManager
+    LQ45 = UniverseManager(universe_name="lq45").get_tickers()
+    IDX_UNIVERSE = LQ45
     from app.risk.risk_manager import RiskManager
     from app.execution.execution_engine import ExecutionEngine, Order
     has_backend = True
@@ -258,7 +260,7 @@ class TUIApp:
             ("S", "SCANNER", "scanner"),
             ("P", "PORTFOLIO", "portfolio"),
             ("I", "INSPECT STOCK", "inspect"),
-            ("B", "BACKTEST LAB", "backtest"),
+            ("T", "BACKTEST LAB", "backtest"),
             ("K", "BROKER CONNECT", "broker")
         ]
         
@@ -601,14 +603,14 @@ class TUIApp:
                             
                     reader.set_raw()
                     state_changed = True
-                elif key_lower == 'b':
+                elif key_lower == 't':
                     self.active_screen = "backtest"
                     if not self.backtest_running:
                         self.msg = "Starting backtest..."
                         self.msg_color = AURORA_PURPLE
                         self.run_backtest_process()
                         state_changed = True
-                elif key_lower == 't':
+                elif key_lower == 'y':
                     # Transact
                     sys.stdout.write("\x1b[2J\x1b[H")
                     sys.stdout.flush()

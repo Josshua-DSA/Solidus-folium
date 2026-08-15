@@ -45,6 +45,7 @@ class FeatureBuilder:
         tbl_horizon: int = 5,
         n_lags: int = 20,
         frac_d: Optional[float] = None,
+        use_polars: bool = False,
     ):
         self.momentum_window = momentum_window
         self.volatility_window = volatility_window
@@ -52,6 +53,17 @@ class FeatureBuilder:
         self.tbl_horizon = tbl_horizon
         self.n_lags = n_lags
         self.frac_d = frac_d
+        self.use_polars = use_polars
+        self._polars_engine = None
+
+        if self.use_polars:
+            try:
+                from shared.features.polars_engine import PolarsFeatureEngine
+                self._polars_engine = PolarsFeatureEngine(n_lags=n_lags)
+                logger.info("PolarsFeatureEngine activated (accelerated mode)")
+            except ImportError:
+                logger.warning("polars not installed, falling back to pandas")
+                self.use_polars = False
 
     # =========================================================================
     # Baseline features (Fase 1)
@@ -100,6 +112,9 @@ class FeatureBuilder:
         """
         Build fitur teknikal untuk ML model.
 
+        Jika use_polars=True, gunakan PolarsFeatureEngine (10x-50x lebih cepat).
+        Jika tidak, gunakan pandas (default).
+
         Berdasarkan Malla et al. (XGBoost NEPSE forecasting):
           - Lagged log-returns (1..20)
           - Short-term volatility (5 days)
@@ -115,6 +130,18 @@ class FeatureBuilder:
         Returns:
             DataFrame dengan semua fitur teknikal
         """
+        # Route ke Polars engine jika tersedia
+        if self._polars_engine is not None:
+            return self._polars_engine.build_technical_features(ohlc)
+
+        # Default: Pandas engine
+        return self._build_technical_features_pandas(ohlc)
+
+    def _build_technical_features_pandas(
+        self,
+        ohlc: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """Pandas implementation of technical features (original)."""
         close = ohlc["close"]
         high = ohlc["high"]
         low = ohlc["low"]

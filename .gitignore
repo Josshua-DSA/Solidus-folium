@@ -20,3 +20,10 @@ scipy_pypi.json
 venv/
 data/ihsg_trading.db
 .cache/
+
+# MLOps artifacts
+mlruns/
+mlflow.db
+.dvc/cache/
+artifacts/registry.db
+artifacts/saved_models/*.pkl

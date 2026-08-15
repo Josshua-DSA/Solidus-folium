@@ -176,6 +176,51 @@ class StorageManager:
             df["date"] = pd.to_datetime(df["date"])
         return df
 
+    def load_prices_polars(
+        self, tickers: Optional[List[str]] = None
+    ) -> "pl.DataFrame":
+        """
+        Load data harga menggunakan Polars untuk accelerated query & pivot.
+
+        Returns:
+            Polars DataFrame long format
+        """
+        import polars as pl
+
+        with self._connect() as conn:
+            if tickers:
+                placeholders = ",".join("?" * len(tickers))
+                query = f"SELECT * FROM prices WHERE ticker IN ({placeholders}) ORDER BY date"
+                pdf = pd.read_sql_query(query, conn, params=tickers)
+            else:
+                pdf = pd.read_sql_query("SELECT * FROM prices ORDER BY date", conn)
+
+        return pl.from_pandas(pdf)
+
+    def load_close_prices_polars(
+        self, tickers: Optional[List[str]] = None
+    ) -> pd.DataFrame:
+        """
+        Load close prices menggunakan Polars pivot (accelerated).
+
+        Returns:
+            pandas DataFrame wide format (compatible dengan semua downstream)
+        """
+        import polars as pl
+
+        pldf = self.load_prices_polars(tickers)
+        if pldf.is_empty():
+            return pd.DataFrame()
+
+        pivoted = pldf.pivot(
+            on="ticker", index="date", values="close"
+        ).sort("date")
+
+        pdf = pivoted.to_pandas()
+        pdf["date"] = pd.to_datetime(pdf["date"])
+        pdf = pdf.set_index("date")
+        return pdf
+
     def load_close_prices(
         self, tickers: Optional[List[str]] = None
     ) -> pd.DataFrame:

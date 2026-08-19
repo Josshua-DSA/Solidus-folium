@@ -36,8 +36,8 @@ NORD_STYLE = Style([
 ])
 
 BANNER = """[bold #88c0d0]========================================[/bold #88c0d0]
-[bold #eceff4]  Finance-Pro Quant Platform (v1.0.0)[/bold #eceff4]
-[bold #81a1c1]  🚀 Server API: http://localhost:8000[/bold #81a1c1]
+[bold #eceff4] 🍃 Folium Quantitative Terminal (v7.0.0)[/bold #eceff4]
+[bold #81a1c1] 🚀 Server API: http://localhost:8000[/bold #81a1c1]
 [bold #88c0d0]========================================[/bold #88c0d0]"""
 
 
@@ -66,7 +66,13 @@ def launch_web_ui():
 
 
 def launch_terminal_ui():
-    """Jalankan Terminal UI (Interactive CLI TUI)."""
+    """Jalankan Terminal UI (Interactive CLI TUI) dengan Onboarding Check."""
+    from shared.utils.user_profile import ProfileManager
+    pm = ProfileManager()
+    if not pm.exists():
+        from frontend.cli.onboarding import run_onboarding_wizard
+        run_onboarding_wizard()
+
     console.print("\n[bold #88c0d0]🖥️  Membuka Terminal UI (TUI)...[/bold #88c0d0]\n")
     
     tui_script = os.path.join("frontend", "cli", "tui_runner.py")

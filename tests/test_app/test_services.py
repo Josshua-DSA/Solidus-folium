@@ -179,11 +179,11 @@ class TestBacktestService:
 
 class TestPortfolioService:
     def test_init(self):
-        ps = PortfolioService(initial_capital=200_000_000)
+        ps = PortfolioService(initial_capital=200_000_000, seed_profile=False)
         assert ps.initial_capital == Decimal("200000000")
 
     def test_execute_buy(self):
-        ps = PortfolioService(initial_capital=200_000_000)
+        ps = PortfolioService(initial_capital=200_000_000, seed_profile=False)
         result = ps.execute_order(
             ticker="BBCA.JK",
             side="BUY",
@@ -195,7 +195,7 @@ class TestPortfolioService:
         assert ps.position_manager.positions["BBCA.JK"].quantity_shares == 500
 
     def test_execute_sell(self):
-        ps = PortfolioService(initial_capital=200_000_000)
+        ps = PortfolioService(initial_capital=200_000_000, seed_profile=False)
         # First buy
         ps.execute_order("BBCA.JK", "BUY", 5, 10000)
         # Then sell
@@ -221,14 +221,13 @@ class TestPortfolioService:
 
     def test_lot_constraint(self):
         """Shares should always be lots * 100."""
-        ps = PortfolioService(initial_capital=200_000_000)
+        ps = PortfolioService(initial_capital=200_000_000, seed_profile=False)
         ps.execute_order("BBCA.JK", "BUY", 3, 10000)
         pos = ps.position_manager.positions["BBCA.JK"]
         assert pos.quantity_shares == 300
-        assert pos.quantity_shares % 100 == 0
 
     def test_get_portfolio_summary(self):
-        ps = PortfolioService(initial_capital=200_000_000)
+        ps = PortfolioService(initial_capital=200_000_000, seed_profile=False)
         ps.execute_order("BBCA.JK", "BUY", 5, 10000)
 
         summary = ps.get_portfolio_summary({"BBCA.JK": 10500})

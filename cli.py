@@ -1,17 +1,18 @@
 """
-QUANT TRADING IDX v7 — CLI Entry Point & DI Orchestrator
+FOLIUM TERMINAL — CLI Entry Point & DI Orchestrator
 Menggunakan Typer untuk command-line interface.
 
-Satu-satunya tempat yang boleh import dari semua package.
-Bertindak sebagai Dependency Injection orchestrator.
-
 Usage:
-    python cli.py fetch          — Download & simpan data ke SQLite
-    python cli.py clean          — Jalankan pipeline DataCleaner
-    python cli.py features       — Build fitur teknikal
-    python cli.py backtest       — Jalankan backtest (momentum / ml_signal)
-    python cli.py status         — Cek status database & pipeline
-    python cli.py health         — Cek konektivitas API eksternal
+    folium fetch          — Download & simpan data ke SQLite
+    folium clean          — Jalankan pipeline DataCleaner
+    folium features       — Build fitur teknikal
+    folium backtest       — Jalankan backtest (momentum / ml_signal)
+    folium status         — Cek status database & pipeline
+    folium health         — Cek konektivitas API eksternal
+    folium train          — Latih model ML di background
+    folium models         — Kelola Model Registry (list/compare/promote)
+    folium scheduler      — Sinkronisasi data otomatis jam bursa
+    folium profile        — Edit profil saldo RDN & portofolio saham client
 """
 import typer
 from typing import Optional
@@ -19,10 +20,38 @@ from rich.console import Console
 
 console = Console()
 app = typer.Typer(
-    name="quant-trading-idx",
-    help="QUANT TRADING IDX v7 — Sistem Trading Kuantitatif Bursa Indonesia",
+    name="folium",
+    help="🍃 Folium Quantitative Terminal — Bloomberg-style Trading Platform for IDX",
     add_completion=False,
+    invoke_without_command=True,
 )
+
+
+@app.callback(invoke_without_command=True)
+def main_callback(ctx: typer.Context):
+    """
+    Jika folium dipanggil tanpa subcommand, luncurkan Interactive TUI / Master Menu.
+    """
+    if ctx.invoked_subcommand is None:
+        import os
+        import sys
+        from shared.utils.user_profile import ProfileManager
+        from frontend.cli.onboarding import run_onboarding_wizard
+
+        # 1. Cek Onboarding Profile
+        pm = ProfileManager()
+        if not pm.exists():
+            run_onboarding_wizard()
+
+        # 2. Jalankan TUI Interactive Dashboard
+        tui_script = os.path.join(os.path.dirname(__file__), "frontend", "cli", "tui_runner.py")
+        if os.path.exists(tui_script):
+            import subprocess
+            subprocess.run([sys.executable, tui_script])
+        else:
+            # Fallback jika dipanggil out-of-repo
+            from main import main as launch_master
+            launch_master()
 
 
 # ---------------------------------------------------------------------------
@@ -506,6 +535,30 @@ def scheduler(
 
     else:
         console.print(f"[red]Unknown action: {action}. Gunakan: status, start, once[/red]")
+
+
+@app.command()
+def profile(
+    edit: bool = typer.Option(False, "--edit", "-e", help="Jalankan wizard untuk mengubah profil RDN & saham")
+):
+    """
+    Tampilkan atau ubah profil saldo RDN & portofolio saham client.
+    """
+    from shared.utils.user_profile import ProfileManager
+    from frontend.cli.onboarding import run_onboarding_wizard
+
+    pm = ProfileManager()
+    if edit or not pm.exists():
+        run_onboarding_wizard(force_edit=True)
+    else:
+        prof = pm.load()
+        console.print(f"\n[bold #88c0d0]📋 PROFIL INVESTOR FOLIUM[/bold #88c0d0]")
+        console.print(f"  Investor Name : [bold]{prof.investor_name}[/bold]")
+        console.print(f"  Saldo Kas RDN : [bold #a3be8c]Rp {prof.rdn_balance:,.0f}[/bold #a3be8c]")
+        console.print(f"  Pegangan Saham: [bold]{len(prof.positions)} Ticker[/bold]")
+        for p in prof.positions:
+            console.print(f"    • [cyan]{p.ticker}[/cyan]: {p.lots} Lot ({p.shares:,} lembar) @ Rp {p.avg_price:,.0f}")
+        console.print("\n[dim]Gunakan 'folium profile --edit' untuk mengubah data ini.[/dim]\n")
 
 
 # ---------------------------------------------------------------------------

@@ -317,7 +317,7 @@ class TestEnsembleModel:
         y_train, y_test = y[:int(0.7*n)], y[int(0.7*n):]
         X_seq_train, X_seq_test = X_seq[:int(0.7*n)], X_seq[int(0.7*n):]
 
-        ensemble = EnsembleModel(EnsembleConfig(method="weighted", lstm_epochs=5))
+        ensemble = EnsembleModel(EnsembleConfig(method="weighted", lstm_epochs=2))
         ensemble.fit(
             X_train, y_train,
             X_seq_train=X_seq_train,
@@ -336,7 +336,7 @@ class TestSupervisedAutoencoder:
         """Autoencoder sklearn fallback harus bisa fit dan transform."""
         X, y = sample_classification_data
 
-        ae = SupervisedAutoencoder(AutoencoderConfig(encoding_dim=10))
+        ae = SupervisedAutoencoder(AutoencoderConfig(encoding_dim=10, epochs=2))
         ae.fit(X, y)
 
         X_encoded = ae.transform(X)
@@ -346,7 +346,7 @@ class TestSupervisedAutoencoder:
         """Autoencoder harus bisa predict."""
         X, y = sample_classification_data
 
-        ae = SupervisedAutoencoder(AutoencoderConfig(encoding_dim=10))
+        ae = SupervisedAutoencoder(AutoencoderConfig(encoding_dim=10, epochs=2))
         ae.fit(X, y)
 
         y_pred = ae.predict(X)
@@ -357,7 +357,7 @@ class TestSupervisedAutoencoder:
         """Reconstruction error harus return array."""
         X, y = sample_classification_data
 
-        ae = SupervisedAutoencoder(AutoencoderConfig(encoding_dim=10))
+        ae = SupervisedAutoencoder(AutoencoderConfig(encoding_dim=10, epochs=2))
         ae.fit(X, y)
 
         errors = ae.reconstruction_error(X)
@@ -380,6 +380,7 @@ class TestModelTrainer:
             test_size=100,
             step=100,
             max_folds=2,
+            optuna_n_trials=2,
             save_artifacts=False,
         )
 

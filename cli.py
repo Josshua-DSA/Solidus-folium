@@ -23,7 +23,35 @@ app = typer.Typer(
     name="folium",
     help="🍃 Folium Quantitative Terminal — Bloomberg-style Trading Platform for IDX",
     add_completion=False,
+    invoke_without_command=True,
 )
+
+
+@app.callback(invoke_without_command=True)
+def main_callback(ctx: typer.Context):
+    """
+    Jika folium dipanggil tanpa subcommand, luncurkan Interactive TUI / Master Menu.
+    """
+    if ctx.invoked_subcommand is None:
+        import os
+        import sys
+        from shared.utils.user_profile import ProfileManager
+        from frontend.cli.onboarding import run_onboarding_wizard
+
+        # 1. Cek Onboarding Profile
+        pm = ProfileManager()
+        if not pm.exists():
+            run_onboarding_wizard()
+
+        # 2. Jalankan TUI Interactive Dashboard
+        tui_script = os.path.join(os.path.dirname(__file__), "frontend", "cli", "tui_runner.py")
+        if os.path.exists(tui_script):
+            import subprocess
+            subprocess.run([sys.executable, tui_script])
+        else:
+            # Fallback jika dipanggil out-of-repo
+            from main import main as launch_master
+            launch_master()
 
 
 # ---------------------------------------------------------------------------

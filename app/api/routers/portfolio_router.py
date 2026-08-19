@@ -16,7 +16,7 @@ from app.api.schemas.portfolio_schemas import (
 
 router = APIRouter(prefix="/api/v1/portfolio", tags=["Portfolio Service"])
 
-_portfolio_service = PortfolioService()
+_portfolio_service = PortfolioService(seed_profile=False)
 _data_service = DataService()
 
 

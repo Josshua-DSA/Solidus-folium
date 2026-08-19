@@ -39,10 +39,13 @@ class PortfolioService:
         max_position_pct: float = 1.0,
         daily_loss_limit: float = 0.03,
         max_drawdown_stop: float = 0.15,
+        seed_profile: bool = True,
     ):
-        # Auto-sync dengan UserProfile jika initial_capital tidak dispesifikasikan
-        pm = ProfileManager()
-        profile = pm.load() if pm.exists() else None
+        # Auto-sync dengan UserProfile jika disetujui & ada profile
+        profile = None
+        if seed_profile:
+            pm = ProfileManager()
+            profile = pm.load() if pm.exists() else None
 
         if initial_capital is None:
             if profile and profile.rdn_balance > 0:
@@ -67,8 +70,8 @@ class PortfolioService:
         )
         self.position_manager = PositionManager(initial_capital=float(self.initial_capital))
 
-        # Seed posisi awal dari UserProfile jika ada
-        if profile and profile.positions:
+        # Seed posisi awal dari UserProfile jika seed_profile=True
+        if seed_profile and profile and profile.positions:
             for p in profile.positions:
                 try:
                     self.position_manager.open_position(

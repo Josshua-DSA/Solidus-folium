@@ -18,6 +18,7 @@ scipy_pypi.json
 **/__pycache__/
 .pytest_cache/
 venv/
+*.egg-info/
 data/ihsg_trading.db
 .cache/
 

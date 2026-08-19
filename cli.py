@@ -12,6 +12,7 @@ Usage:
     folium train          — Latih model ML di background
     folium models         — Kelola Model Registry (list/compare/promote)
     folium scheduler      — Sinkronisasi data otomatis jam bursa
+    folium profile        — Edit profil saldo RDN & portofolio saham client
 """
 import typer
 from typing import Optional
@@ -506,6 +507,30 @@ def scheduler(
 
     else:
         console.print(f"[red]Unknown action: {action}. Gunakan: status, start, once[/red]")
+
+
+@app.command()
+def profile(
+    edit: bool = typer.Option(False, "--edit", "-e", help="Jalankan wizard untuk mengubah profil RDN & saham")
+):
+    """
+    Tampilkan atau ubah profil saldo RDN & portofolio saham client.
+    """
+    from shared.utils.user_profile import ProfileManager
+    from frontend.cli.onboarding import run_onboarding_wizard
+
+    pm = ProfileManager()
+    if edit or not pm.exists():
+        run_onboarding_wizard(force_edit=True)
+    else:
+        prof = pm.load()
+        console.print(f"\n[bold #88c0d0]📋 PROFIL INVESTOR FOLIUM[/bold #88c0d0]")
+        console.print(f"  Investor Name : [bold]{prof.investor_name}[/bold]")
+        console.print(f"  Saldo Kas RDN : [bold #a3be8c]Rp {prof.rdn_balance:,.0f}[/bold #a3be8c]")
+        console.print(f"  Pegangan Saham: [bold]{len(prof.positions)} Ticker[/bold]")
+        for p in prof.positions:
+            console.print(f"    • [cyan]{p.ticker}[/cyan]: {p.lots} Lot ({p.shares:,} lembar) @ Rp {p.avg_price:,.0f}")
+        console.print("\n[dim]Gunakan 'folium profile --edit' untuk mengubah data ini.[/dim]\n")
 
 
 # ---------------------------------------------------------------------------

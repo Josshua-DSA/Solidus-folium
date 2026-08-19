@@ -20,6 +20,7 @@ from app.execution.execution_engine import ExecutionEngine, Order, Trade
 from app.execution.position_manager import PositionManager
 from app.risk.risk_manager import RiskManager
 from app.backtest.transaction_cost import TransactionCostModel
+from shared.utils.user_profile import ProfileManager
 
 logger = logging.getLogger(__name__)
 
@@ -27,42 +28,56 @@ logger = logging.getLogger(__name__)
 class PortfolioService:
     """
     Service layer untuk portfolio management (paper trading).
-
-    Args:
-        initial_capital: Modal awal (Rp)
-        commission_pct: Komisi broker
-        slippage_pct: Slippage
-        max_position_pct: Bobot maks per posisi
-        daily_loss_limit: Batas rugi harian
-        max_drawdown_stop: MDD stop limit
+    Otomatis menyinkronkan modal RDN dan holding awal dari UserProfile jika ada.
     """
 
     def __init__(
         self,
-        initial_capital: float = 100_000_000,
+        initial_capital: Optional[float] = None,
         commission_pct: float = 0.0015,
         slippage_pct: float = 0.0005,
-        max_position_pct: float = 0.10,
-        daily_loss_limit: float = -0.03,
-        max_drawdown_stop: float = -0.15,
+        max_position_pct: float = 1.0,
+        daily_loss_limit: float = 0.03,
+        max_drawdown_stop: float = 0.15,
     ):
+        # Auto-sync dengan UserProfile jika initial_capital tidak dispesifikasikan
+        pm = ProfileManager()
+        profile = pm.load() if pm.exists() else None
+
+        if initial_capital is None:
+            if profile and profile.rdn_balance > 0:
+                initial_capital = profile.rdn_balance
+            else:
+                initial_capital = 10_000_000.0
+
         self.initial_capital = Decimal(str(initial_capital))
-
-        # Execution engine
-        self.engine = ExecutionEngine(
-            commission_pct=commission_pct,
-            slippage_pct=slippage_pct,
-        )
-
-        # Position manager
-        self.position_manager = PositionManager(initial_capital=initial_capital)
-
-        # Risk manager
         self.risk_manager = RiskManager(
             max_position_pct=max_position_pct,
             daily_loss_limit=daily_loss_limit,
             max_drawdown_stop=max_drawdown_stop,
         )
+        self.cost_model = TransactionCostModel(
+            commission_buy_pct=commission_pct,
+            commission_sell_pct=commission_pct,
+            slippage_pct=slippage_pct,
+        )
+        self.engine = ExecutionEngine(
+            commission_pct=commission_pct,
+            slippage_pct=slippage_pct,
+        )
+        self.position_manager = PositionManager(initial_capital=float(self.initial_capital))
+
+        # Seed posisi awal dari UserProfile jika ada
+        if profile and profile.positions:
+            for p in profile.positions:
+                try:
+                    self.position_manager.open_position(
+                        ticker=p.ticker,
+                        quantity_shares=p.shares,
+                        price=float(p.avg_price),
+                    )
+                except Exception as e:
+                    logger.warning("Gagal seed posisi awal %s: %s", p.ticker, e)
 
         # Transaction cost model
         self.tc_model = TransactionCostModel(

@@ -21,6 +21,8 @@ from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
+from shared.utils.path_resolver import get_artifacts_dir, get_registry_db_path
+
 logger = logging.getLogger(__name__)
 
 # Model lifecycle stages
@@ -57,11 +59,11 @@ class ModelRegistry:
 
     def __init__(
         self,
-        artifacts_dir: str = "artifacts/saved_models",
-        db_path: str = "artifacts/registry.db",
+        artifacts_dir: Optional[str] = None,
+        db_path: Optional[str] = None,
     ):
-        self.artifacts_dir = Path(artifacts_dir)
-        self.db_path = db_path
+        self.artifacts_dir = Path(artifacts_dir) if artifacts_dir else Path(get_artifacts_dir())
+        self.db_path = db_path if db_path else get_registry_db_path()
         self.artifacts_dir.mkdir(parents=True, exist_ok=True)
         self._init_db()
 

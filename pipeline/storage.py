@@ -13,10 +13,9 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 import logging
 
-logger = logging.getLogger(__name__)
+from shared.utils.path_resolver import get_db_path
 
-# Default DB path (relative to project root)
-_DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "data" / "ihsg_trading.db"
+logger = logging.getLogger(__name__)
 
 
 class StorageManager:
@@ -28,7 +27,7 @@ class StorageManager:
     """
 
     def __init__(self, db_path: Optional[str] = None):
-        self.db_path = str(db_path) if db_path else str(_DEFAULT_DB_PATH)
+        self.db_path = get_db_path(db_path)
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 

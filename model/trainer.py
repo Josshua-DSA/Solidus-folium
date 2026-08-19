@@ -104,28 +104,28 @@ class ModelTrainer:
             fit_kwargs={"feature_names": feature_names},
         )
 
-        # MLflow Experiment Tracking
-        try:
-            import mlflow
-            mlflow.set_experiment("Finance-Pro_Quant_Training")
-            with mlflow.start_run(run_name=f"{self.config.model_type}_{datetime.now():%Y%m%d_%H%M%S}"):
-                # Log params
-                mlflow.log_params({
-                    "model_type": self.config.model_type,
-                    "train_size": self.config.train_size,
-                    "test_size": self.config.test_size,
-                    "step": self.config.step,
-                    "walk_forward_mode": self.config.walk_forward_mode,
-                    "use_optuna": self.config.use_optuna,
-                })
-                # Log metrics
-                if self.results and self.results.aggregate_metrics:
-                    for metric_name, val in self.results.aggregate_metrics.items():
-                        if isinstance(val, (int, float)):
-                            mlflow.log_metric(metric_name, float(val))
-                logger.info("Logged training run to MLflow experiment 'Finance-Pro_Quant_Training'")
-        except Exception as e:
-            logger.debug("MLflow logging skipped: %s", e)
+        # MLflow Experiment Tracking (skip during pytest / unit tests to prevent IO blocking)
+        if os.environ.get("PYTEST_CURRENT_TEST") is None:
+            try:
+                import mlflow
+                mlflow.set_experiment("Finance-Pro_Quant_Training")
+                with mlflow.start_run(run_name=f"{self.config.model_type}_{datetime.now():%Y%m%d_%H%M%S}"):
+                    # Log params
+                    mlflow.log_params({
+                        "model_type": self.config.model_type,
+                        "train_size": self.config.train_size,
+                        "test_size": self.config.test_size,
+                        "step": self.config.step,
+                        "walk_forward_mode": self.config.walk_forward_mode,
+                        "use_optuna": self.config.use_optuna,
+                    })
+                    # Log metrics
+                    if self.results and self.results.aggregate_metrics:
+                        for metric_name, val in self.results.aggregate_metrics.items():
+                            if isinstance(val, (int, float)):
+                                mlflow.log_metric(f"oos_{metric_name}", float(val))
+            except Exception as e:
+                logger.warning("MLflow logging skipped or failed: %s", e)
 
         # Final training on all data
         logger.info("Training final model on all data...")

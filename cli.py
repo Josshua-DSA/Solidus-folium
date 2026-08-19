@@ -1,17 +1,17 @@
 """
-QUANT TRADING IDX v7 — CLI Entry Point & DI Orchestrator
+FOLIUM TERMINAL — CLI Entry Point & DI Orchestrator
 Menggunakan Typer untuk command-line interface.
 
-Satu-satunya tempat yang boleh import dari semua package.
-Bertindak sebagai Dependency Injection orchestrator.
-
 Usage:
-    python cli.py fetch          — Download & simpan data ke SQLite
-    python cli.py clean          — Jalankan pipeline DataCleaner
-    python cli.py features       — Build fitur teknikal
-    python cli.py backtest       — Jalankan backtest (momentum / ml_signal)
-    python cli.py status         — Cek status database & pipeline
-    python cli.py health         — Cek konektivitas API eksternal
+    folium fetch          — Download & simpan data ke SQLite
+    folium clean          — Jalankan pipeline DataCleaner
+    folium features       — Build fitur teknikal
+    folium backtest       — Jalankan backtest (momentum / ml_signal)
+    folium status         — Cek status database & pipeline
+    folium health         — Cek konektivitas API eksternal
+    folium train          — Latih model ML di background
+    folium models         — Kelola Model Registry (list/compare/promote)
+    folium scheduler      — Sinkronisasi data otomatis jam bursa
 """
 import typer
 from typing import Optional
@@ -19,8 +19,8 @@ from rich.console import Console
 
 console = Console()
 app = typer.Typer(
-    name="quant-trading-idx",
-    help="QUANT TRADING IDX v7 — Sistem Trading Kuantitatif Bursa Indonesia",
+    name="folium",
+    help="🍃 Folium Quantitative Terminal — Bloomberg-style Trading Platform for IDX",
     add_completion=False,
 )
 

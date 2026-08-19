@@ -36,8 +36,8 @@ NORD_STYLE = Style([
 ])
 
 BANNER = """[bold #88c0d0]========================================[/bold #88c0d0]
-[bold #eceff4]  Finance-Pro Quant Platform (v1.0.0)[/bold #eceff4]
-[bold #81a1c1]  🚀 Server API: http://localhost:8000[/bold #81a1c1]
+[bold #eceff4] 🍃 Folium Quantitative Terminal (v7.0.0)[/bold #eceff4]
+[bold #81a1c1] 🚀 Server API: http://localhost:8000[/bold #81a1c1]
 [bold #88c0d0]========================================[/bold #88c0d0]"""
 
 

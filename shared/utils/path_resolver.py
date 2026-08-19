@@ -93,3 +93,10 @@ def get_logs_dir() -> str:
     logs = root / "outputs" / "logs"
     logs.mkdir(parents=True, exist_ok=True)
     return str(logs)
+
+
+def get_profile_path() -> str:
+    """Return absolute path ke user_profile.json."""
+    root = get_folium_dir()
+    profile_file = root / "user_profile.json"
+    return str(profile_file)

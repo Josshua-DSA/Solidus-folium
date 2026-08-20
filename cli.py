@@ -59,6 +59,13 @@ def main_callback(ctx: typer.Context):
 # ---------------------------------------------------------------------------
 
 @app.command()
+def gui():
+    """Luncurkan Folium Quant Desk Desktop GUI (PySide6/PyQt6 Workstation)."""
+    from frontend.gui.app import run_gui
+    run_gui()
+
+
+@app.command()
 def fetch(
     universe: str = typer.Option("lq45", help="Universe: idx_all, lq45, kompas100, custom"),
     start: str = typer.Option("2015-01-01", help="Start date (YYYY-MM-DD)"),

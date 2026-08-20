@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PAPERIUM QUANT DESK — TUI Runner Wrapper
+FOLIUM QUANT DESK — TUI Runner Wrapper
 Redirects to the modular TUI application under frontend/cli/.
 """
 import sys
@@ -16,5 +16,10 @@ if __name__ == "__main__":
     try:
         app.run()
     except KeyboardInterrupt:
-        pass
-    print("\n[dim]Paperium Terminal closed.[/dim]")
+        sys.stdout.write("\x1b[2J\x1b[H")
+        print("\n🍃 Folium Quantitative Terminal session ended.")
+    except Exception as e:
+        sys.stdout.write("\x1b[2J\x1b[H")
+        print(f"\n[!] Folium Terminal Error: {e}")
+        import traceback
+        traceback.print_exc()

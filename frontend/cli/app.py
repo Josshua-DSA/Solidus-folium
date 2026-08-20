@@ -182,7 +182,7 @@ class TUIApp:
 
         self.capital = Decimal(str(user_prof.rdn_balance))
         self.portfolio = []
-        if user_prof.positions:
+        if user_prof and getattr(user_prof, 'positions', None):
             for pos in user_prof.positions:
                 cur_price = latest_prices.get(pos.ticker, pos.avg_price)
                 self.portfolio.append({
@@ -667,10 +667,8 @@ class TUIApp:
                     if has_backend and BacktestService is not None:
                         try:
                             bt_service = BacktestService()
-                            if selected_strategy == "momentum":
-                                res = bt_service.run_momentum_backtest(tickers=self.available_tickers[:10])
-                            else:
-                                res = bt_service.run_momentum_backtest(tickers=self.available_tickers[:10])
+                            target_tickers = self.available_tickers[:10] if self.available_tickers else LQ45[:10]
+                            res = bt_service.run_momentum_backtest(tickers=target_tickers)
                             self.backtest_results = res
                         except Exception:
                             pass
@@ -846,6 +844,27 @@ class TUIApp:
                         "total": Decimal(str(shares)) * exec_price,
                         "notes": f"TUI Exec - Comm: Rp {commission:,.0f}"
                     })
+
+                    # Auto-persist updated portfolio & RDN balance to UserProfile disk
+                    try:
+                        from shared.utils.user_profile import ProfileManager, UserProfile, StockPosition
+                        pm = ProfileManager()
+                        new_positions = [
+                            StockPosition(
+                                ticker=pos["ticker"],
+                                lots=pos["shares"] // 100,
+                                avg_price=float(pos["avg_price"])
+                            )
+                            for pos in self.portfolio
+                        ]
+                        updated_prof = UserProfile(
+                            investor_name="Client Investor",
+                            rdn_balance=float(self.capital),
+                            positions=new_positions
+                        )
+                        pm.save(updated_prof)
+                    except Exception:
+                        pass
 
                     self.msg = f"TRADE SUCCESS: {side_input} {lots} lot {self.current_ticker} @ Rp {exec_price:,.0f}."
                     self.msg_color = AURORA_GREEN

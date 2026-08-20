@@ -18,6 +18,7 @@ try:
     IDX_UNIVERSE = LQ45
     from app.risk.risk_manager import RiskManager
     from app.execution.execution_engine import ExecutionEngine, Order
+    from app.services.backtest_service import BacktestService
     has_backend = True
 except ImportError:
     has_backend = False
@@ -25,6 +26,7 @@ except ImportError:
     RiskManager = None
     ExecutionEngine = None
     Order = None
+    BacktestService = None
     LQ45 = ["BBCA.JK", "BBRI.JK", "BMRI.JK", "TLKM.JK", "ASII.JK", "UNVR.JK", "ADRO.JK", "KLBF.JK", "ICBP.JK", "INDF.JK"]
     IDX_UNIVERSE = LQ45
 
@@ -665,8 +667,10 @@ class TUIApp:
                     if has_backend and BacktestService is not None:
                         try:
                             bt_service = BacktestService()
-                            # Run backtest offline
-                            res = bt_service.run_backtest(strategy_name=selected_strategy, universe="lq45", start_date="2022-01-01", end_date="2025-12-31")
+                            if selected_strategy == "momentum":
+                                res = bt_service.run_momentum_backtest(tickers=self.available_tickers[:10])
+                            else:
+                                res = bt_service.run_momentum_backtest(tickers=self.available_tickers[:10])
                             self.backtest_results = res
                         except Exception:
                             pass

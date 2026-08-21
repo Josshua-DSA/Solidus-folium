@@ -19,12 +19,14 @@ scipy_pypi.json
 .pytest_cache/
 venv/
 *.egg-info/
-data/ihsg_trading.db
+data/ihsg_trading.db*
+data/*.db*
 .cache/
 
 # MLOps artifacts
 mlruns/
-mlflow.db
+mlflow.db*
 .dvc/cache/
-artifacts/registry.db
+artifacts/registry.db*
+artifacts/*.db*
 artifacts/saved_models/*.pkl

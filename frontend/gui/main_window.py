@@ -27,6 +27,7 @@ from frontend.gui.components.chart_canvas import ChartCanvasWidget
 from frontend.gui.components.market_table import MarketTableWidget
 from frontend.gui.components.risk_meter import RiskMeterWidget
 from frontend.gui.components.backtest_lab import BacktestLabWidget
+from frontend.gui.components.portfolio_panel import PortfolioPanelWidget
 
 # ── Nord Palette Constants ───────────────────────────────────────
 POLAR_NIGHT_0 = "#2E3440"
@@ -148,6 +149,14 @@ class FoliumMainWindow(QMainWindow):
 
         toolbar.addSeparator()
 
+        # Place Order button
+        order_btn = toolbar.addAction("📋 Place Order")
+        order_btn.triggered.connect(self._on_place_order)
+
+        # ML Inference button
+        infer_btn = toolbar.addAction("🤖 Run Inference")
+        infer_btn.triggered.connect(self._on_run_inference)
+
         # Sync Data button
         sync_btn = toolbar.addAction("🔄 Sync Data")
         sync_btn.triggered.connect(self._on_sync_data)
@@ -226,7 +235,8 @@ class FoliumMainWindow(QMainWindow):
 
         # --- Right Dock: Portfolio & Model Registry ---
         self.portfolio_dock = QDockWidget("💼 PORTFOLIO & LEDGER", self)
-        self.portfolio_dock.setWidget(self._build_portfolio_panel())
+        self.portfolio_panel = PortfolioPanelWidget()
+        self.portfolio_dock.setWidget(self.portfolio_panel)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.portfolio_dock)
 
         self.registry_dock = QDockWidget("🤖 MODEL REGISTRY", self)
@@ -388,7 +398,7 @@ class FoliumMainWindow(QMainWindow):
             self.capital_label.setText("RDN Cash: N/A")
 
     def _on_portfolio_row_clicked(self, row, col):
-        ticker_item = self.portfolio_table.item(row, 0)
+        ticker_item = self.portfolio_panel.positions_table.item(row, 0)
         if ticker_item:
             self.chart_canvas.load_ticker(ticker_item.text())
 
@@ -500,6 +510,29 @@ class FoliumMainWindow(QMainWindow):
         )
         self._fetch_worker.start()
         self._show_status("Data sync started...")
+
+    def _on_place_order(self):
+        """Open the Order Execution Dialog from toolbar."""
+        from frontend.gui.components.order_dialog import OrderExecutionDialog
+        ticker = self.chart_canvas.current_ticker
+        dialog = OrderExecutionDialog(ticker=ticker, parent=self)
+        dialog.exec()
+
+    def _on_run_inference(self):
+        """Run ML inference scanner on background thread."""
+        from frontend.gui.workers.inference_worker import InferenceWorker
+        try:
+            from pipeline.storage import StorageManager
+            tickers = StorageManager().get_available_tickers()
+        except Exception:
+            tickers = None
+
+        self._inference_worker = InferenceWorker(tickers=tickers)
+        self._inference_worker.error_occurred.connect(
+            lambda msg: self._show_status(f"Inference Error: {msg}", 5000)
+        )
+        self._inference_worker.start()
+        self._show_status("ML Inference running (loading production model)...")
 
     def _on_run_scanner(self):
         from frontend.gui.workers.async_workers import ScannerWorker

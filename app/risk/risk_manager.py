@@ -50,7 +50,7 @@ class RiskManager:
         """
         results = {}
         for i, ticker in enumerate(tickers):
-            results[ticker] = weights[i] <= self.max_position_pct
+            results[ticker] = bool(weights[i] <= self.max_position_pct)
 
         violations = {t: w for t, w in zip(tickers, weights) if w > self.max_position_pct}
         if violations:

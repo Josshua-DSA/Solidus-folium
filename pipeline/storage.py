@@ -116,10 +116,12 @@ class StorageManager:
 
         # Pastikan kolom date ada dan string
         if "date" not in data.columns:
-            if data.index.name == "date" or hasattr(data.index, "date"):
+            if data.index.name == "date" or isinstance(data.index, pd.DatetimeIndex) or hasattr(data.index, "date"):
                 data = data.reset_index()
+                if "date" not in data.columns and "index" in data.columns:
+                    data = data.rename(columns={"index": "date"})
             else:
-                raise ValueError("DataFrame harus memiliki kolom 'date'")
+                raise ValueError("DataFrame harus memiliki kolom 'date' atau DatetimeIndex")
 
         data["date"] = pd.to_datetime(data["date"]).dt.strftime("%Y-%m-%d")
         data["ticker"] = ticker
@@ -327,12 +329,14 @@ class StorageManager:
         if "timestamp" not in data.columns:
             if "date" in data.columns:
                 data = data.rename(columns={"date": "timestamp"})
-            elif data.index.name in ("timestamp", "date", "Datetime"):
+            elif data.index.name in ("timestamp", "date", "Datetime") or isinstance(data.index, pd.DatetimeIndex) or hasattr(data.index, "date"):
                 data = data.reset_index()
                 if "Datetime" in data.columns:
                     data = data.rename(columns={"Datetime": "timestamp"})
                 elif "date" in data.columns:
                     data = data.rename(columns={"date": "timestamp"})
+                elif "index" in data.columns:
+                    data = data.rename(columns={"index": "timestamp"})
             else:
                 raise ValueError(
                     "DataFrame harus memiliki kolom 'timestamp' atau 'date'"

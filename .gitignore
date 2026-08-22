@@ -13,6 +13,9 @@ outputs/
 *.json
 install_uv.sh
 scipy_pypi.json
+dist/
+build/
+*.spec
 
 # Cache & Local Files
 **/__pycache__/

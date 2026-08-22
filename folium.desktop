@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Folium Quant Desk
+GenericName=Quantitative Trading Workstation
+Comment=Institutional-grade algorithmic trading & quantitative analytics workstation for IDX
+Exec=folium-workstation
+Icon=utilities-terminal
+Terminal=false
+Categories=Office;Finance;Development;
+Keywords=quant;trading;finance;idx;stocks;backtest;machine-learning;
+StartupNotify=true
+StartupWMClass=folium-workstation

@@ -40,7 +40,7 @@ class DataCleaner:
         Returns:
             DataFrame tanpa baris anomali
         """
-        returns = close_prices.pct_change()
+        returns = close_prices.pct_change(fill_method=None)
         anomaly_mask = returns.abs() > self.max_return_threshold
 
         # Hitung rasio anomali per baris (tanggal)
